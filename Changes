@@ -1,0 +1,6 @@
+Revision history for Perl extension ExtUtils::Constant.
+
+0.13  Mon Aug  5 20:20:21 2002
+	Copy the module and test from bleadperl
+        Find and fix a bug when there is only 1 item of a given length, but
+        it has the "check utf8 flag" set. Regression test 52 now tests this.
