@@ -1,6 +1,6 @@
 package ExtUtils::Constant;
 use vars qw (@ISA $VERSION %XS_Constant %XS_TypeSet @EXPORT_OK %EXPORT_TAGS);
-$VERSION = '0.14';
+$VERSION = 0.15;
 
 =head1 NAME
 
@@ -32,7 +32,7 @@ Generally one only needs to call the C<WriteConstants> function, and then
 
 in the C section of C<Foo.xs>
 
-    INCLUDE const-xs.inc
+    INCLUDE: const-xs.inc
 
 in the XS section of C<Foo.xs>.
 
@@ -286,7 +286,8 @@ sub memEQ_clause {
   my $len = length $name;
 
   if ($len < 2) {
-    return $indent . "{\n" if (defined $checked_at and $checked_at == 0);
+    return $indent . "{\n"
+	if (defined $checked_at and $checked_at == 0) or $len == 0;
     # We didn't switch, drop through to the code for the 2 character string
     $checked_at = 1;
   }
@@ -683,6 +684,7 @@ sub dump_names {
     $used_types{$type}++;
     if ($type eq $default_type
         # grr 5.6.1
+        and length $_->{name}
         and length $_->{name} == ($_->{name} =~ tr/A-Za-z0-9_//)
         and !defined ($_->{macro}) and !defined ($_->{value})
         and !defined ($_->{default}) and !defined ($_->{pre})
