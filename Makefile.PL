@@ -2,8 +2,10 @@ use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
-    'NAME'	=> 'ExtUtils::Constant',
+    'NAME'         => 'ExtUtils::Constant',
     'VERSION_FROM' => 'Constant.pm', # finds $VERSION
+    # Added to the core somewhere around 5.7.2.
+    INSTALLDIRS    => $] >= 5.007002 ? 'perl' : 'site'
 );
 
 if ($] > 5.005_50 && $] < 5.006001) {

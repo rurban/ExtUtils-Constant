@@ -1,4 +1,4 @@
-ExtUtils::Constant version 0.13
+ExtUtils::Constant version 0.14
 ===============================
 
 A module to generate XS code to import C header constants.
@@ -66,4 +66,4 @@ You may distribute this work under the terms of either the GNU General
 Public License or the Artistic License, as specified in perl's README
 file.
 
-Copyright © 2001,2002 Nicholas Clark
+Copyright © 2001, 2002 Nicholas Clark
