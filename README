@@ -1,4 +1,4 @@
-ExtUtils::Constant version 0.15
+ExtUtils::Constant version 0.16
 ===============================
 
 A module to generate XS code to import C header constants.

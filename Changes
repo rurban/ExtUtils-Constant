@@ -22,3 +22,19 @@ Revision history for Perl extension ExtUtils::Constant.
         grand total of 648(ish) bytes. Amazing! (well, every little helps)
         Will now install into the core for perl 5.8.0 or later (as it's a core
         module from 5.7.2ish)
+
+0.15  Thu Jan 13 21:54:21 GMT 2005
+	Avoid problems in dogfood() if a zero length name accidentally gets in
+	Docpatch from Steve Peters
+
+0.16  Sun Jan 23 13:33:33 GMT 2005
+	Refactoring to make parts of the code re-usable for other keyword
+	matching needs. Keep the XS specific functions in ExtUtils::Constant
+	Move the helper functions to ExtUtils::Constant::Utils
+	Turn the generic functions into methods in ExtUtils::Constant::Base,
+	with overrides in ExtUtils::Constant::XS for the existing use.
+	Move ExtUtils::Constant::Aaargh56Hash into its own file.
+	Add "weight" facility. Sorting keyword ordering with this gained
+	another 10% speedup on Perl_keyword. This makes me wonder if second
+	level switching would be a win.
+	Add two examples of subclassing in the examples/ directory.
