@@ -1,17 +1,15 @@
 #!/usr/bin/perl -w
 
-BEGIN {
-    if( $ENV{PERL_CORE} ) {
-        chdir 't' if -d 't';
-        @INC = '../lib';
-    }
+use Config;
+unless ($Config{usedl}) {
+    print "1..0 # no usedl, skipping\n";
+    exit 0;
 }
 
 # use warnings;
 use strict;
 use ExtUtils::MakeMaker;
-use ExtUtils::Constant qw (constant_types C_constant XS_constant autoload);
-use Config;
+use ExtUtils::Constant qw (C_constant autoload);
 use File::Spec;
 use Cwd;
 
@@ -22,29 +20,55 @@ my $keep_files = 0;
 $| = 1;
 
 # Because were are going to be changing directory before running Makefile.PL
-my $perl = $^X;
 # 5.005 doesn't have new enough File::Spec to have rel2abs. But actually we
 # only need it when $^X isn't absolute, which is going to be 5.8.0 or later
 # (where ExtUtils::Constant is in the core, and tests against the uninstalled
 # perl)
-$perl = File::Spec->rel2abs ($perl) unless $] < 5.006;
+my $perl = $] < 5.006 ? $^X : File::Spec->rel2abs($^X);
 # ExtUtils::Constant::C_constant uses $^X inside a comment, and we want to
 # compare output to ensure that it is the same. We were probably run as ./perl
 # whereas we will run the child with the full path in $perl. So make $^X for
 # us the same as our child will see.
 $^X = $perl;
-my $lib = $ENV{PERL_CORE} ? '../../../lib' : '../../blib/lib';
-my $runperl = "$perl \"-I$lib\"";
-print "# perl=$perl\n";
+# 5.005 doesn't have rel2abs, but also doesn't need to load an uninstalled
+# module from blib
+@INC = map {File::Spec->rel2abs($_)} @INC if $] < 5.007 && $] >= 5.006;
 
 my $make = $Config{make};
 $make = $ENV{MAKE} if exists $ENV{MAKE};
 if ($^O eq 'MSWin32' && $make eq 'nmake') { $make .= " -nologo"; }
 
+# VMS may be using something other than MMS/MMK
+my $mms_or_mmk = 0;
+my $vms_lc = 0;
+my $vms_nodot = 0;
+if ($^O eq 'VMS') {
+    $mms_or_mmk = 1 if (($make eq 'MMK') || ($make eq 'MMS'));
+    $vms_lc = 1;
+    $vms_nodot = 1;
+    my $vms_unix_rpt = 0;
+    my $vms_efs = 0;
+    my $vms_efs_case = 0;
+    if (eval 'require VMS::Feature') {
+        $vms_unix_rpt = VMS::Feature::current("filename_unix_report");
+        $vms_efs = VMS::Feature::current("efs_case_preserve");
+        $vms_efs_case = VMS::Feature::current("efs_charset");
+    } else {
+        my $unix_rpt = $ENV{'DECC$FILENAME_UNIX_REPORT'} || '';
+        my $efs_charset = $ENV{'DECC$EFS_CHARSET'} || '';
+        my $efs_case = $ENV{'DECC$EFS_CASE_PRESERVE'} || '';
+        $vms_unix_rpt = $unix_rpt =~ /^[ET1]/i; 
+        $vms_efs = $efs_charset =~ /^[ET1]/i; 
+        $vms_efs_case = $efs_case =~ /^[ET1]/i; 
+    }
+    $vms_lc = 0 if $vms_efs_case;
+    $vms_nodot = 0 if $vms_unix_rpt;
+}
+
 # Renamed by make clean
-my $makefile = ($^O eq 'VMS' ? 'descrip' : 'Makefile');
-my $makefile_ext = ($^O eq 'VMS' ? '.mms' : '');
-my $makefile_rename = $makefile . ($^O eq 'VMS' ? '.mms' : '.old');
+my $makefile = ($mms_or_mmk ? 'descrip' : 'Makefile');
+my $makefile_ext = ($mms_or_mmk ? '.mms' : '');
+my $makefile_rename = $makefile . ($mms_or_mmk ? '.mms_old' : '.old');
 
 my $output = "output";
 my $package = "ExtTest";
@@ -75,14 +99,38 @@ END {
 chdir $dir or die $!;
 push @INC, '../../lib', '../../../lib';
 
+package TieOut;
+
+sub TIEHANDLE {
+    my $class = shift;
+    bless(\( my $ref = ''), $class);
+}
+
+sub PRINT {
+    my $self = shift;
+    $$self .= join('', @_);
+}
+
+sub PRINTF {
+    my $self = shift;
+    $$self .= sprintf shift, @_;
+}
+
+sub read {
+    my $self = shift;
+    return substr($$self, 0, length($$self), '');
+}
+
+package main;
+
 sub check_for_bonus_files {
   my $dir = shift;
-  my %expect = map {($^O eq 'VMS' ? lc($_) : $_), 1} @_;
+  my %expect = map {($vms_lc ? lc($_) : $_), 1} @_;
 
   my $fail;
   opendir DIR, $dir or die "opendir '$dir': $!";
   while (defined (my $entry = readdir DIR)) {
-    $entry =~ s/\.$// if $^O eq 'VMS';  # delete trailing dot that indicates no extension
+    $entry =~ s/\.$// if $vms_nodot;  # delete trailing dot that indicates no extension
     next if $expect{$entry};
     print "# Extra file '$entry'\n";
     $fail = 1;
@@ -100,9 +148,9 @@ sub check_for_bonus_files {
 sub build_and_run {
   my ($tests, $expect, $files) = @_;
   my $core = $ENV{PERL_CORE} ? ' PERL_CORE=1' : '';
-  my @perlout = `$runperl Makefile.PL $core`;
+  my @perlout = `$perl Makefile.PL $core`;
   if ($?) {
-    print "not ok $realtest # $runperl Makefile.PL failed: $?\n";
+    print "not ok $realtest # $perl Makefile.PL failed: $?\n";
     print "# $_" foreach @perlout;
     exit($?);
   } else {
@@ -120,6 +168,33 @@ sub build_and_run {
   my @makeout;
 
   if ($^O eq 'VMS') { $make .= ' all'; }
+
+  # Sometimes it seems that timestamps can get confused
+
+  # make failed: 256
+  # Makefile out-of-date with respect to Makefile.PL
+  # Cleaning current config before rebuilding Makefile...
+  # make -f Makefile.old clean > /dev/null 2>&1 || /bin/sh -c true
+  # ../../perl "-I../../../lib" "-I../../../lib" Makefile.PL "PERL_CORE=1"
+  # Checking if your kit is complete...                         
+  # Looks good
+  # Writing Makefile for ExtTest
+  # ==> Your Makefile has been rebuilt. <==
+  # ==> Please rerun the make command.  <==
+  # false
+
+  my $timewarp = (-M "Makefile.PL") - (-M "$makefile$makefile_ext");
+  # Convert from days to seconds
+  $timewarp *= 86400;
+  print "# Makefile.PL is $timewarp second(s) older than $makefile$makefile_ext\n";
+  if ($timewarp < 0) {
+      # Sleep for a while to catch up.
+      $timewarp = -$timewarp;
+      $timewarp+=2;
+      $timewarp = 10 if $timewarp > 10;
+      print "# Sleeping for $timewarp second(s) to try to resolve this\n";
+      sleep $timewarp;
+  }
 
   print "# make = '$make'\n";
   @makeout = `$make`;
@@ -173,38 +248,45 @@ sub build_and_run {
   }
   $realtest++;
 
-  # -x is busted on Win32 < 5.6.1, so we emulate it.
-  my $regen;
-  if( $^O eq 'MSWin32' && $] <= 5.006001 ) {
-    open(REGENTMP, ">regentmp") or die $!;
-    open(XS, "$package.xs")     or die $!;
-    my $saw_shebang;
-    while(<XS>) {
-      $saw_shebang++ if /^#!.*/i ;
-        print REGENTMP $_ if $saw_shebang;
-    }
-    close XS;  close REGENTMP;
-    $regen = `$runperl regentmp`;
-    unlink 'regentmp';
-  }
-  else {
-    $regen = `$runperl -x $package.xs`;
-  }
-  if ($?) {
-    print "not ok $realtest # $runperl -x $package.xs failed: $?\n";
-  } else {
-    print "ok $realtest - regen\n";
-  }
-  $realtest++;
+  if (defined $expect) {
+      # -x is busted on Win32 < 5.6.1, so we emulate it.
+      my $regen;
+      if( $^O eq 'MSWin32' && $] <= 5.006001 ) {
+	  open(REGENTMP, ">regentmp") or die $!;
+	  open(XS, "$package.xs")     or die $!;
+	  my $saw_shebang;
+	  while(<XS>) {
+	      $saw_shebang++ if /^#!.*/i ;
+	      print REGENTMP $_ if $saw_shebang;
+	  }
+	  close XS;  close REGENTMP;
+	  $regen = `$perl regentmp`;
+	  unlink 'regentmp';
+      }
+      else {
+	  $regen = `$perl -x $package.xs`;
+      }
+      if ($?) {
+	  print "not ok $realtest # $perl -x $package.xs failed: $?\n";
+	  } else {
+	      print "ok $realtest - regen\n";
+	  }
+      $realtest++;
 
-  if ($expect eq $regen) {
-    print "ok $realtest - regen worked\n";
+      if ($expect eq $regen) {
+	  print "ok $realtest - regen worked\n";
+      } else {
+	  print "not ok $realtest - regen worked\n";
+	  # open FOO, ">expect"; print FOO $expect;
+	  # open FOO, ">regen"; print FOO $regen; close FOO;
+      }
+      $realtest++;
   } else {
-    print "not ok $realtest - regen worked\n";
-    # open FOO, ">expect"; print FOO $expect;
-    # open FOO, ">regen"; print FOO $regen; close FOO;
+    for (0..1) {
+      print "ok $realtest # skip no regen or expect for this set of tests\n";
+      $realtest++;
+    }
   }
-  $realtest++;
 
   my $makeclean = "$make clean";
   print "# make = '$makeclean'\n";
@@ -219,8 +301,8 @@ sub build_and_run {
 
   check_for_bonus_files ('.', @$files, $output, $makefile_rename, '.', '..');
 
-  rename $makefile_rename, $makefile
-    or die "Can't rename '$makefile_rename' to '$makefile': $!";
+  rename $makefile_rename, $makefile . $makefile_ext
+    or die "Can't rename '$makefile_rename' to '$makefile$makefile_ext': $!";
 
   unlink $output or warn "Can't unlink '$output': $!";
 
@@ -283,16 +365,35 @@ sub MANIFEST {
 }
 
 sub write_and_run_extension {
-  my ($name, $items, $export_names, $package, $header, $testfile, $num_tests)
-    = @_;
-  my $types = {};
-  my $constant_types = constant_types(); # macro defs
-  my $C_constant = join "\n",
-    C_constant ($package, undef, "IV", $types, undef, undef, @$items);
-  my $XS_constant = XS_constant ($package, $types); # XS for ExtTest::constant
+  my ($name, $items, $export_names, $package, $header, $testfile, $num_tests,
+      $wc_args) = @_;
 
-  my $expect = $constant_types . $C_constant .
-    "\n#### XS Section:\n" . $XS_constant;
+  local *C;
+  local *XS;
+
+  my $c = tie *C, 'TieOut';
+  my $xs = tie *XS, 'TieOut';
+
+  ExtUtils::Constant::WriteConstants(C_FH => \*C,
+				     XS_FH => \*XS,
+				     NAME => $package,
+				     NAMES => $items,
+				     @$wc_args,
+				     );
+
+  my $C_code = $c->read();
+  my $XS_code = $xs->read();
+
+  undef $c;
+  undef $xs;
+
+  untie *C;
+  untie *XS;
+
+  # Don't check the regeneration code if we specify extra arguments to
+  # WriteConstants. (Fix this to give finer grained control if needed)
+  my $expect;
+  $expect = $C_code . "\n#### XS Section:\n" . $XS_code unless $wc_args;
 
   print "# $name\n# $dir/$subdir being created...\n";
   mkdir $subdir, 0777 or die "mkdir: $!\n";
@@ -308,23 +409,23 @@ sub write_and_run_extension {
   close FH or die "close $header_name: $!\n";
 
   ################ XS
-  my $xs = "$package.xs";
-  push @files, $xs;
-  open FH, ">$xs" or die "open >$xs: $!\n";
+  my $xs_name = "$package.xs";
+  push @files, $xs_name;
+  open FH, ">$xs_name" or die "open >$xs_name: $!\n";
 
-  print FH <<'EOT';
+  print FH <<"EOT";
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#include "$header_name"
+
+
+$C_code
+MODULE = $package		PACKAGE = $package
+PROTOTYPES: ENABLE
+$XS_code;
 EOT
 
-  # XXX Here doc these:
-  print FH "#include \"$header_name\"\n\n";
-  print FH $constant_types;
-  print FH $C_constant, "\n";
-  print FH "MODULE = $package		PACKAGE = $package\n";
-  print FH "PROTOTYPES: ENABLE\n";
-  print FH $XS_constant;
   close FH or die "close $xs: $!\n";
 
   ################ PM
@@ -398,6 +499,7 @@ EOT
   chdir $updir or die "chdir '$updir': $!";
   ++$subdir;
 }
+
 # Tests are arrayrefs of the form
 # $name, [items], [export_names], $package, $header, $testfile, $num_tests
 my @tests;
@@ -411,9 +513,9 @@ sub start_tests {
   $here = $dummytest;
 }
 sub end_tests {
-  my ($name, $items, $export_names, $header, $testfile) = @_;
+  my ($name, $items, $export_names, $header, $testfile, $args) = @_;
   push @tests, [$name, $items, $export_names, $package, $header, $testfile,
-               $dummytest - $here];
+               $dummytest - $here, $args];
   $dummytest += $after_tests;
 }
 
@@ -430,6 +532,9 @@ my @common_items = (
                     {name=>$pound, type=>"PV", value=>'"Sterling"', macro=>1},
                    );
 
+my @args = undef;
+push @args, [PROXYSUBS => 1] if $] > 5.009002;
+foreach my $args (@args)
 {
   # Simple tests
   start_tests();
@@ -477,7 +582,7 @@ EOT
                {name=>"RFC1149", type=>"SV", value=>"sv_2mortal(temp_sv)",
                 pre=>"SV *temp_sv = newSVpv(RFC1149, 0); "
                 . "(void) SvUPGRADE(temp_sv,SVt_PVIV); SvIOK_on(temp_sv); "
-                . "SvIVX(temp_sv) = 1149;"},
+                . "SvIV_set(temp_sv, 1149);"},
               );
 
   push @items, $_ foreach keys %compass;
@@ -489,122 +594,160 @@ EOT
   # Exporter::Heavy (currently) isn't able to export the last 3 of these:
   push @items, @common_items;
 
-  # XXX there are hardwired still.
-  my $test_body = <<'EOT';
+  my $test_body = <<"EOT";
+
+my \$test = $dummytest;
+
+EOT
+
+  $test_body .= <<'EOT';
 # What follows goes to the temporary file.
 # IV
 my $five = FIVE;
 if ($five == 5) {
-  print "ok 5\n";
+  print "ok $test\n";
 } else {
-  print "not ok 5 # \$five\n";
+  print "not ok $test # \$five\n";
 }
+$test++;
 
 # PV
-print OK6;
+if (OK6 eq "ok 6\n") {
+  print "ok $test\n";
+} else {
+  print "not ok $test # \$five\n";
+}
+$test++;
 
 # PVN containing embedded \0s
 $_ = OK7;
 s/.*\0//s;
+s/7/$test/;
+$test++;
 print;
 
 # NV
 my $farthing = FARTHING;
 if ($farthing == 0.25) {
-  print "ok 8\n";
+  print "ok $test\n";
 } else {
-  print "not ok 8 # $farthing\n";
+  print "not ok $test # $farthing\n";
 }
+$test++;
 
+EOT
+
+  my $cond;
+  if ($] >= 5.006 || $Config{longsize} < 8) {
+    $cond = '$not_zero > 0 && $not_zero == ~0';
+  } else {
+    $cond = q{pack 'Q', $not_zero eq ~pack 'Q', 0};
+  }
+
+  $test_body .= sprintf <<'EOT', $cond;
 # UV
 my $not_zero = NOT_ZERO;
-if ($not_zero > 0 && $not_zero == ~0) {
-  print "ok 9\n";
+if (%s) {
+  print "ok $test\n";
 } else {
-  print "not ok 9 # \$not_zero=$not_zero ~0=" . (~0) . "\n";
+  print "not ok $test # \$not_zero=$not_zero ~0=" . (~0) . "\n";
 }
+$test++;
+
+EOT
+
+  $test_body .= <<'EOT';
 
 # Value includes a "*/" in an attempt to bust out of a C comment.
 # Also tests custom cpp #if clauses
 my $close = CLOSE;
 if ($close eq '*/') {
-  print "ok 10\n";
+  print "ok $test\n";
 } else {
-  print "not ok 10 # \$close='$close'\n";
+  print "not ok $test # \$close='$close'\n";
 }
+$test++;
 
 # Default values if macro not defined.
 my $answer = ANSWER;
 if ($answer == 42) {
-  print "ok 11\n";
+  print "ok $test\n";
 } else {
-  print "not ok 11 # What do you get if you multiply six by nine? '$answer'\n";
+  print "not ok $test # What do you get if you multiply six by nine? '$answer'\n";
 }
+$test++;
 
 # not defined macro
 my $notdef = eval { NOTDEF; };
 if (defined $notdef) {
-  print "not ok 12 # \$notdef='$notdef'\n";
+  print "not ok $test # \$notdef='$notdef'\n";
 } elsif ($@ !~ /Your vendor has not defined ExtTest macro NOTDEF/) {
-  print "not ok 12 # \$@='$@'\n";
+  print "not ok $test # \$@='$@'\n";
 } else {
-  print "ok 12\n";
+  print "ok $test\n";
 }
+$test++;
 
 # not a macro
 my $notthere = eval { &ExtTest::NOTTHERE; };
 if (defined $notthere) {
-  print "not ok 13 # \$notthere='$notthere'\n";
+  print "not ok $test # \$notthere='$notthere'\n";
 } elsif ($@ !~ /NOTTHERE is not a valid ExtTest macro/) {
   chomp $@;
-  print "not ok 13 # \$@='$@'\n";
+  print "not ok $test # \$@='$@'\n";
 } else {
-  print "ok 13\n";
+  print "ok $test\n";
 }
+$test++;
 
 # Truth
 my $yes = Yes;
 if ($yes) {
-  print "ok 14\n";
+  print "ok $test\n";
 } else {
-  print "not ok 14 # $yes='\$yes'\n";
+  print "not ok $test # $yes='\$yes'\n";
 }
+$test++;
 
 # Falsehood
 my $no = No;
 if (defined $no and !$no) {
-  print "ok 15\n";
+  print "ok $test\n";
 } else {
-  print "not ok 15 # \$no=" . defined ($no) ? "'$no'\n" : "undef\n";
+  print "not ok $test # \$no=" . defined ($no) ? "'$no'\n" : "undef\n";
 }
+$test++;
 
 # Undef
 my $undef = Undef;
 unless (defined $undef) {
-  print "ok 16\n";
+  print "ok $test\n";
 } else {
-  print "not ok 16 # \$undef='$undef'\n";
+  print "not ok $test # \$undef='$undef'\n";
 }
+$test++;
 
 # invalid macro (chosen to look like a mix up between No and SW)
 $notdef = eval { &ExtTest::So };
 if (defined $notdef) {
-  print "not ok 17 # \$notdef='$notdef'\n";
+  print "not ok $test # \$notdef='$notdef'\n";
 } elsif ($@ !~ /^So is not a valid ExtTest macro/) {
-  print "not ok 17 # \$@='$@'\n";
+  print "not ok $test # \$@='$@'\n";
 } else {
-  print "ok 17\n";
+  print "ok $test\n";
 }
+$test++;
 
 # invalid defined macro
 $notdef = eval { &ExtTest::EW };
 if (defined $notdef) {
-  print "not ok 18 # \$notdef='$notdef'\n";
+  print "not ok $test # \$notdef='$notdef'\n";
 } elsif ($@ !~ /^EW is not a valid ExtTest macro/) {
-  print "not ok 18 # \$@='$@'\n";
+  print "not ok $test # \$@='$@'\n";
 } else {
-  print "ok 18\n";
+  print "ok $test\n";
 }
+$test++;
 
 my %compass = (
 EOT
@@ -632,26 +775,29 @@ while (my ($point, $bearing) = each %compass) {
   }
 }
 if ($fail) {
-  print "not ok 19\n";
+  print "not ok $test\n";
 } else {
-  print "ok 19\n";
+  print "ok $test\n";
 }
+$test++;
 
 EOT
 
 $test_body .= <<"EOT";
 my \$rfc1149 = RFC1149;
 if (\$rfc1149 ne "$parent_rfc1149") {
-  print "not ok 20 # '\$rfc1149' ne '$parent_rfc1149'\n";
+  print "not ok \$test # '\$rfc1149' ne '$parent_rfc1149'\n";
 } else {
-  print "ok 20\n";
+  print "ok \$test\n";
 }
+\$test++;
 
 if (\$rfc1149 != 1149) {
-  printf "not ok 21 # %d != 1149\n", \$rfc1149;
+  printf "not ok \$test # %d != 1149\n", \$rfc1149;
 } else {
-  print "ok 21\n";
+  print "ok \$test\n";
 }
+\$test++;
 
 EOT
 
@@ -659,14 +805,16 @@ $test_body .= <<'EOT';
 # test macro=>1
 my $open = OPEN;
 if ($open eq '/*') {
-  print "ok 22\n";
+  print "ok $test\n";
 } else {
-  print "not ok 22 # \$open='$open'\n";
+  print "not ok $test # \$open='$open'\n";
 }
+$test++;
 EOT
 $dummytest+=18;
 
-  end_tests("Simple tests", \@items, \@export_names, $header, $test_body);
+  end_tests("Simple tests", \@items, \@export_names, $header, $test_body,
+	    $args);
 }
 
 if ($do_utf_tests) {
@@ -750,7 +898,7 @@ foreach (["perl", "rules", "rules"],
         ) {
   # Flag an expected error with a reference for the expect string.
   my ($string, $expect, $expect_bytes) = @$_;
-  (my $name = $string) =~ s/([^ -~])/sprintf '\x{%X}', ord $1/ges;
+  (my $name = $string) =~ s/([^ !"#\$%&'()*+,\-.\/0-9:;<=>?\@A-Z[\\\]^_`a-z{|}~])/sprintf '\x{%X}', ord $1/ges;
   print "# \"$name\" => \'$expect\'\n";
   # Try to force this to be bytes if possible.
   if ($better_than_56) {

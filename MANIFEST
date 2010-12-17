@@ -2,6 +2,7 @@ Changes
 lib/ExtUtils/Constant.pm
 lib/ExtUtils/Constant/Aaargh56Hash.pm
 lib/ExtUtils/Constant/Base.pm
+lib/ExtUtils/Constant/ProxySubs.pm
 lib/ExtUtils/Constant/Utils.pm
 lib/ExtUtils/Constant/XS.pm
 MANIFEST

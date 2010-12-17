@@ -5,7 +5,7 @@ WriteMakefile(
     'NAME'         => 'ExtUtils::Constant',
     'VERSION_FROM' => 'lib/ExtUtils/Constant.pm', # finds $VERSION
     # Added to the core somewhere around 5.7.2.
-    INSTALLDIRS    => $] >= 5.007002 ? 'perl' : 'site'
+    INSTALLDIRS    => ($] >= 5.007002 && $] <= 5.012) ? 'perl' : 'site',
 );
 
 if ($] > 5.005_50 && $] < 5.006001) {
