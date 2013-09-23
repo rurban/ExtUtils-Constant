@@ -6,6 +6,7 @@ WriteMakefile(
     'VERSION_FROM' => 'lib/ExtUtils/Constant.pm', # finds $VERSION
     # Added to the core somewhere around 5.7.2.
     INSTALLDIRS    => ($] >= 5.007002 && $] <= 5.012) ? 'perl' : 'site',
+    PREREQ_PM      => { 'IPC::Cmd' => 0 }, # for can_run, in core since 5.9.5
 );
 
 if ($] > 5.005_50 && $] < 5.006001) {
