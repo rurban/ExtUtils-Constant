@@ -637,8 +637,10 @@ EOA
 	    sv = newSVpvf("%"SVf" is not a valid $package_sprintf_safe macro at %"
 			  COP_FILE_F " line %d\\n", sv, COP_FILE(cop), CopLINE(cop));
 	}
-	croak_sv(sv_2mortal(sv));
 EOC
+        print $xs_fh $] >= 5.013001
+          ? "\tcroak_sv(sv_2mortal(sv));\n"
+          : "\tcroak(SvPV_nolen(sv_2mortal(sv)));\n";
     } else {
         print $xs_fh $explosives ? <<"EXPLODE" : <<"DONT";
 
