@@ -44,7 +44,7 @@ sub C_constant_prefix_param {
   "aTHX_ ";
 }
 
-sub C_constant_prefix_param_defintion {
+sub C_constant_prefix_param_definition {
   "pTHX_ ";
 }
 

@@ -614,7 +614,7 @@ sub C_constant_prefix_param {
   '';
 }
 
-sub C_constant_prefix_param_defintion {
+sub C_constant_prefix_param_definition {
   '';
 }
 
@@ -920,7 +920,7 @@ sub C_constant {
   my ($body, @subs);
   $body = $self->C_constant_return_type($params) . "\n$subname ("
     # Eg "pTHX_ "
-    . $self->C_constant_prefix_param_defintion($params)
+    . $self->C_constant_prefix_param_definition($params)
       # Probably "const char *name"
       . $self->name_param_definition($params);
   # Something like ", STRLEN len"

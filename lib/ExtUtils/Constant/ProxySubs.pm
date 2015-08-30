@@ -229,7 +229,7 @@ sub WriteConstants {
     my ($found, $notfound, $trouble)
 	= $self->partition_names($default_type, @items);
 
-    my $pthx = $self->C_constant_prefix_param_defintion();
+    my $pthx = $self->C_constant_prefix_param_definition();
     my $athx = $self->C_constant_prefix_param();
     my $symbol_table = C_stringify($package) . '::';
     $push = C_stringify($package . '::' . $push) if $push;
