@@ -148,6 +148,7 @@ sub check_for_bonus_files {
 sub build_and_run {
   my ($tests, $expect, $files) = @_;
   my $core = $ENV{PERL_CORE} ? ' PERL_CORE=1' : '';
+  sleep 1; # [RT #78188]
   my @perlout = `$perl Makefile.PL $core`;
   if ($?) {
     print "not ok $realtest # $perl Makefile.PL failed: $?\n";
