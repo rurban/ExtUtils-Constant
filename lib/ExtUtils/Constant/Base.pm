@@ -582,8 +582,8 @@ sub switch_clause {
     foreach my $thisone (sort {
 	# Deal with the case of an item actually being an array ref to 1 or 2
 	# hashrefs. Don't assign to $a or $b, as they're aliases to the original
-	my $l = ref $a eq 'ARRAY' ? ($a->[0] || $->[1]) : $a;
-	my $r = ref $b eq 'ARRAY' ? ($b->[0] || $->[1]) : $b;
+	my $l = ref $a eq 'ARRAY' ? ($a->[0] || $a->[1]) : $a;
+	my $r = ref $b eq 'ARRAY' ? ($b->[0] || $b->[1]) : $b;
 	# Sort by weight first
 	($r->{weight} || 0) <=> ($l->{weight} || 0)
 	    # Sort equal weights by name
