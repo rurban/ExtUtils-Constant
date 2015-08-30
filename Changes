@@ -42,3 +42,27 @@ history can be found via http://perl5.git.perl.org/perl.git/tree/HEAD:/lib ]
 	another 10% speedup on Perl_keyword. This makes me wonder if second
 	level switching would be a win.
 	Add two examples of subclassing in the examples/ directory.
+
+0.20
+	This version is in perl5 core since v5.9.3
+
+0.21
+	This version is in perl5 core with v5.8.9
+
+0.22	Fri Jun 12 13:59:49 2009 +0100
+	This version is in perl5 core since v5.10.1
+        updated with 71605646f0e67f65c13aa000ef0881ebb82461a5
+
+        No Changes
+
+0.23	Tue Oct 19 20:17:22 2010 +0200
+        Add option croak_on_error to PROXYSUBS, to directly croak() the error message.
+
+        This is only useful with the code that generates Proxy
+        Constant Subroutines, as this adds all known constants to the
+        symbol table at compile time, meaning that the only calls to
+        AUTOLOAD will be to load constants not available on this platform,
+        or for invalid constant names.
+
+        This version is in perl5 core since v5.13.7 updated with
+        04777d295957ad270
