@@ -597,6 +597,10 @@ EOBOOT
     return if !defined $xs_subname;
 
     if ($croak_on_error || $autoload) {
+        my $newSVpvtemp = $] >= 5010001
+          ? "newSVpvn_flags(SvPVX(cv), SvCUR(cv), SVs_TEMP | SvUTF8(cv))"
+          # no UTF-8 subnames < 5.10.1
+          : "sv_2mortal(newSVpvn(SvPVX(cv), SvCUR(cv)))";
         print $xs_fh $croak_on_error ? <<"EOC" : <<'EOA';
 
 void
@@ -614,7 +618,7 @@ void
 AUTOLOAD()
     PROTOTYPE: DISABLE
     PREINIT:
-	SV *sv = newSVpvn_flags(SvPVX(cv), SvCUR(cv), SVs_TEMP | SvUTF8(cv));
+	SV *sv = $newSVpvtemp;
 	const COP *cop = PL_curcop;
 EOA
         print $xs_fh <<"EOC";
