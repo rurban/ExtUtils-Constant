@@ -1,5 +1,5 @@
-ExtUtils::Constant version 0.16
-===============================
+ExtUtils::Constant
+==================
 
 A module to generate XS code to import C header constants.
 
@@ -37,12 +37,6 @@ build the C code, in an attempt to maximise the chance that the compiler will
 use branch tables making the initial switch statements more efficient, and
 choosing a switch strategy to minimise the amount of linear searching of
 similar constant names.
-
-The documentation is arguably a bit scant currently, with the best examples
-probably being the various Makefile.PL files in the ext/ subdirectory of the
-5.8.0 distribution. I do plan to improve it; however I feel it better to get
-this working version up on CPAN and let people use it, rather than sit on it
-until the documentation is up to scratch.
 
 I believe ExtUtils::Constant is completely Unicode safe, but as a consequence
 of running various pathological cases as regression tests, the tests will
