@@ -66,3 +66,22 @@ history can be found via http://perl5.git.perl.org/perl.git/tree/HEAD:/lib ]
 
         This version is in perl5 core since v5.13.7 updated with
         04777d295957ad270
+
+0.23_01 Sun Aug 30 15:18:28 2015 +0200 (rurban)
+        Fixed all RT bugs by many users:
+        RT #105813 $->[1] typo (hurricup)
+        avoid 'uninit' warning (davem)
+        skip context with threads (bulk88)
+        typo: C_constant_prefix_param_defintion (rurban)
+        RT #88645: fix crosscompiling without make (fperrad)
+        RT #85527: typo fixes (dsteinbrunner)
+        RT #63832: printf warnings from EU:C (zefram)
+        RT #81249: test fix-ups for VMS (cberry)
+        RT #78188: add a sleep 1 to test (rurban)
+        RT #73041: fix newSVpvn_flags SVs_TEMP for <5.10.1 (rurban)
+        RT #64965: fix croak_sv for <5.013 (rurban)
+
+0.23_02 2015-12-14 12:06:07 rurban
+        Fixed syntax error in a generated xs.inc
+        Fixed parallel test warnings: jobserver unavailable
+
