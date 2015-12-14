@@ -26,3 +26,10 @@ known to already have a fix.
 
 EORANT
 }
+
+package MY;
+sub test {
+    local $_ = shift->SUPER::test(@_);
+    s/\tPERL_DL_NONLAZY=1/\t+PERL_DL_NONLAZY=1/;
+    $_;
+}
