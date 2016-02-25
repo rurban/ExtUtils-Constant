@@ -10,7 +10,7 @@ require ExtUtils::Constant::Base;
 @ISA = qw(ExtUtils::Constant::Base Exporter);
 @EXPORT_OK = qw(%XS_Constant %XS_TypeSet);
 
-$VERSION = '0.23_01';
+$VERSION = '0.23_03';
 
 $is_perl56 = ($] < 5.007 && $] > 5.005_50);
 
@@ -182,7 +182,7 @@ sub namelen_param_definition {
   'STRLEN ' . $_[0] -> namelen_param;
 }
 
-sub C_constant_other_params_defintion {
+sub C_constant_other_params_definition {
   my ($self, $params) = @_;
   my $body = '';
   $body .= ", int utf8" if $params->{''};
