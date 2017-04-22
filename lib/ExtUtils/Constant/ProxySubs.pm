@@ -9,7 +9,7 @@ require ExtUtils::Constant::XS;
 use ExtUtils::Constant::Utils qw(C_stringify);
 use ExtUtils::Constant::XS qw(%XS_TypeSet);
 
-$VERSION = '0.23_03';
+$VERSION = '0.23_04';
 @ISA = 'ExtUtils::Constant::XS';
 
 %type_to_struct =
@@ -268,7 +268,7 @@ EO_NOPCS
     SV *sv;
 
     if (!he) {
-        croak("Couldn't add key '%s' to %%$package_sprintf_safe\::",
+        Perl_croak(aTHX_ "Couldn't add key '%s' to %%$package_sprintf_safe\::",
 	      name);
     }
     sv = HeVAL(he);
@@ -306,7 +306,7 @@ static int
 Im_sorry_Dave(pTHX_ SV *sv, MAGIC *mg)
 {
     PERL_UNUSED_ARG(mg);
-    croak("Your vendor has not defined $package_sprintf_safe macro %"SVf
+    Perl_croak(aTHX_ "Your vendor has not defined $package_sprintf_safe macro %"SVf
           " used", sv);
     NORETURN_FUNCTION_END;
 }
@@ -490,7 +490,7 @@ EXPLODE
 		HEK *hek;
 #endif
 		if (!he) {
-		    croak("Couldn't add key '%s' to %%$package_sprintf_safe\::",
+		    Perl_croak(aTHX_ "Couldn't add key '%s' to %%$package_sprintf_safe\::",
 			  value_for_notfound->name);
 		}
 		sv = HeVAL(he);
@@ -519,7 +519,7 @@ EXPLODE
 		if (!hv_common(${c_subname}_missing, NULL, HEK_KEY(hek),
  			       HEK_LEN(hek), HEK_FLAGS(hek), HV_FETCH_ISSTORE,
 			       &PL_sv_yes, HEK_HASH(hek)))
-		    croak("Couldn't add key '%s' to missing_hash",
+		    Perl_croak(aTHX_ "Couldn't add key '%s' to missing_hash",
 			  value_for_notfound->name);
 #endif
 DONT
@@ -630,20 +630,17 @@ EOA
 	    ? get_missing_hash(aTHX) : NULL;
 	if ((C_ARRAY_LENGTH(values_for_notfound) > 1)
 	    ? hv_exists_ent(${c_subname}_missing, sv, 0) : 0) {
-	    sv = newSVpvf("Your vendor has not defined $package_sprintf_safe macro %" SVf
+	    Perl_croak(aTHX_ "Your vendor has not defined $package_sprintf_safe macro %" SVf
 			  ", used at %" COP_FILE_F " line %" UVuf "\\n", 
 			  sv, COP_FILE(cop), (UV)CopLINE(cop));
 	} else
 #endif
 	{
-	    sv = newSVpvf("%"SVf" is not a valid $package_sprintf_safe macro at %"
+	    Perl_croak(aTHX_ "%"SVf" is not a valid $package_sprintf_safe macro at %"
 			  COP_FILE_F " line %" UVuf "\\n",
 			  sv, COP_FILE(cop), (UV)CopLINE(cop));
 	}
 EOC
-        print $xs_fh $] >= 5.013001
-          ? "\tcroak_sv(sv_2mortal(sv));\n"
-          : "\tcroak(SvPV_nolen(sv_2mortal(sv)));\n";
     } else {
         print $xs_fh $explosives ? <<"EXPLODE" : <<"DONT";
 
