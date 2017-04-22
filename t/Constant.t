@@ -24,8 +24,8 @@ use Cwd;
 
 my $do_utf_tests = $] > 5.006;
 my $better_than_56 = $] > 5.007;
-# For debugging set this to 1.
-my $keep_files = 0;
+# For debugging.
+my $keep_files = grep /^--keep-files$/, @ARGV;
 $| = 1;
 
 # Because were are going to be changing directory before running Makefile.PL
@@ -114,12 +114,12 @@ sub check_for_bonus_files {
     $entry =~ s/(.*?)\.?$/\L$1/ if $^O eq 'VMS';
     next if $expect{$entry};
     print "# Extra file '$entry'\n";
-    $fail = 1;
+    $fail = 1 if @_ > 2; # no fail without MANIFEST
   }
 
   closedir DIR or warn "closedir '.': $!";
   if ($fail) {
-    print "not ok $realtest\n";
+    print "not ok $realtest - extra files in $dir (",join(",",@_),")\n";
   } else {
     print "ok $realtest\n";
   }
@@ -130,7 +130,7 @@ sub build_and_run {
   my ($tests, $expect, $files) = @_;
   my $core = $ENV{PERL_CORE} ? ' PERL_CORE=1' : '';
   sleep 1; # [RT #78188]
-  my @perlout = `$perl Makefile.PL $core`;
+  my @perlout = `$perl -Mblib Makefile.PL $core`;
   if ($?) {
     print "not ok $realtest # $perl Makefile.PL failed: $?\n";
     print "# $_" foreach @perlout;
@@ -141,9 +141,9 @@ sub build_and_run {
   $realtest++;
 
   if (-f "$makefile$makefile_ext") {
-    print "ok $realtest\n";
+    print "ok $realtest - \n";
   } else {
-    print "not ok $realtest\n";
+    print "not ok $realtest - $makefile$makefile_ext does not exist\n";
   }
   $realtest++;
 
@@ -185,7 +185,7 @@ sub build_and_run {
     print "# $_" foreach @makeout;
     exit($?);
   } else {
-    print "ok $realtest\n";
+    print "ok $realtest - $make\n";
   }
   $realtest++;
 
@@ -202,7 +202,7 @@ sub build_and_run {
       print "# $_" foreach @makeout;
       exit($?);
     } else {
-      print "ok $realtest\n";
+      print "ok $realtest - $makeperl\n";
     }
   }
   $realtest++;
@@ -231,38 +231,38 @@ sub build_and_run {
   $realtest++;
 
   if (defined $expect) {
-      # -x is busted on Win32 < 5.6.1, so we emulate it.
-      my $regen;
-      if( $^O eq 'MSWin32' && $] <= 5.006001 ) {
-	  open(REGENTMP, ">regentmp") or die $!;
-	  open(XS, "$package.xs")     or die $!;
-	  my $saw_shebang;
-	  while(<XS>) {
-	      $saw_shebang++ if /^#!.*/i ;
-	      print REGENTMP $_ if $saw_shebang;
-	  }
-	  close XS;  close REGENTMP;
-	  $regen = `$perl regentmp`;
-	  unlink 'regentmp';
+    # -x is busted on Win32 < 5.6.1, so we emulate it.
+    my $regen;
+    if ( $^O eq 'MSWin32' && $] <= 5.006001 ) {
+      open(REGENTMP, ">regentmp") or die $!;
+      open(XS, "$package.xs")     or die $!;
+      my $saw_shebang;
+      while(<XS>) {
+        $saw_shebang++ if /^#!.*/i ;
+        print REGENTMP $_ if $saw_shebang;
       }
-      else {
-	  $regen = `$perl -x $package.xs`;
-      }
-      if ($?) {
-	  print "not ok $realtest # $perl -x $package.xs failed: $?\n";
-	  } else {
-	      print "ok $realtest - regen\n";
-	  }
-      $realtest++;
+      close XS;  close REGENTMP;
+      $regen = `$perl regentmp`;
+      unlink 'regentmp';
+    }
+    else {
+      $regen = `$perl -x $package.xs`;
+    }
+    if ($?) {
+      print "not ok $realtest # $perl -x $package.xs failed: $?\n";
+    } else {
+      print "ok $realtest - regen\n";
+    }
+    $realtest++;
 
-      if ($expect eq $regen) {
-	  print "ok $realtest - regen worked\n";
-      } else {
-	  print "not ok $realtest - regen worked\n";
-	  # open FOO, ">expect"; print FOO $expect;
-	  # open FOO, ">regen"; print FOO $regen; close FOO;
-      }
-      $realtest++;
+    if ($expect eq $regen) {
+      print "ok $realtest - regen worked\n";
+    } else {
+      print "not ok $realtest - regen worked\n";
+      # open FOO, ">expect"; print FOO $expect;
+      # open FOO, ">regen"; print FOO $regen; close FOO;
+    }
+    $realtest++;
   } else {
     for (0..1) {
       print "ok $realtest # skip no regen or expect for this set of tests\n";
@@ -320,6 +320,7 @@ sub Makefile_PL {
   open FH, ">$makefilePL" or die "open >$makefilePL: $!\n";
   print FH <<"EOT";
 #!$perl -w
+use blib;
 use ExtUtils::MakeMaker;
 WriteMakefile(
               'NAME'		=> "$package",
@@ -514,8 +515,9 @@ my @common_items = (
                     {name=>$pound, type=>"PV", value=>'"Sterling"', macro=>1},
                    );
 
-my @args = undef;
-push @args, [PROXYSUBS => 1] if $] > 5.009002;
+my @args = ([]);
+push @args, [PROXYSUBS => 1]; # if $] > 5.009002;
+push @args, [PROXYSUBS => {autoload => 1} ];
 foreach my $args (@args)
 {
   # Simple tests

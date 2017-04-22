@@ -456,6 +456,7 @@ as detailed in L<"C_constant">.
 =item PROXYSUBS
 
 If true, uses proxy subs. See L<ExtUtils::Constant::ProxySubs>.
+Code generated via ProxySubs will only work for Perl versions >= 5.14.
 
 =item C_FH
 

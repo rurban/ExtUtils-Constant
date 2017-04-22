@@ -86,10 +86,10 @@ history can be found via http://perl5.git.perl.org/perl.git/tree/HEAD:/lib ]
         Fixed parallel test warnings: jobserver unavailable
 
 0.23_03 2016-02-26 12:14:20 rurban
-        Fixed typo C_constant_other_params_defintion to
+        Fixed typo C_constant_other_params_definition to
           C_constant_other_params_definition throughout
         Fixed podchecker violations.
         Tested with cperl
 
-0.23_04 2016-02-26 12:14:20 rurban
-        Remove croak_sv, which is invalid <5.14
+0.23_04 Sat Apr 22 18:52:28 2017 rurban
+        Fix ProxySubs to generate code also valid for <5.14

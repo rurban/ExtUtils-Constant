@@ -259,12 +259,16 @@ ${c_subname}_add_symbol($pthx HV *hash, const char *name, I32 namelen, SV *value
 EOADD
     if (!$can_do_pcs) {
 	print $c_fh <<'EO_NOPCS';
-    if (namelen == namelen) {
+    if (namelen) {
 EO_NOPCS
     } else {
 	print $c_fh <<"EO_PCS";
+#if PERL_VERSION < 10
+    HE *he = (HE*) hv_fetch(hash, name, namelen, TRUE);
+#else
     HE *he = (HE*) hv_common_key_len(hash, name, namelen, HV_FETCH_LVALUE, NULL,
 				     0);
+#endif
     SV *sv;
 
     if (!he) {
@@ -284,7 +288,11 @@ EOADD
 	print $c_fh <<'EO_PCS';
     } else {
 	SvUPGRADE(sv, SVt_RV);
+#if PERL_VERSION < 10
+	SvRV(sv) = value;
+#else
 	SvRV_set(sv, value);
+#endif
 	SvROK_on(sv);
 	SvREADONLY_on(value);
     }
@@ -346,8 +354,7 @@ get_missing_hash(pTHX) {
     /* We could make a hash of hashes directly, but this would confuse anything
 	at Perl space that looks at us, and as we're visible in Perl space,
 	best to play nice. */
-    SV *const *const ref
-	= hv_fetch(parent, "$key", $key_len, TRUE);
+    SV *const *const ref = hv_fetch(parent, "$key", $key_len, TRUE);
     HV *new_hv;
 
     if (!ref)
@@ -358,7 +365,11 @@ get_missing_hash(pTHX) {
 
     new_hv = newHV();
     SvUPGRADE(*ref, SVt_RV);
+#if PERL_VERSION < 10
+    SvRV(*ref) = (SV *)new_hv;
+#else
     SvRV_set(*ref, (SV *)new_hv);
+#endif
     SvROK_on(*ref);
     return new_hv;
 }
@@ -481,10 +492,17 @@ EOBOOT
 EXPLODE
 
 		/* Need to add prototypes, else parsing will vary by platform.  */
+#if PERL_VERSION < 10
+		HE *he = (HE*) hv_fetch(symbol_table,
+                                        value_for_notfound->name,
+                                        value_for_notfound->namelen,
+                                        TRUE);
+#else
 		HE *he = (HE*) hv_common_key_len(symbol_table,
 						 value_for_notfound->name,
 						 value_for_notfound->namelen,
 						 HV_FETCH_LVALUE, NULL, 0);
+#endif
 		SV *sv;
 #ifndef SYMBIAN
 		HEK *hek;
@@ -496,6 +514,9 @@ EXPLODE
 		sv = HeVAL(he);
 		if (!SvOK(sv) && SvTYPE(sv) != SVt_PVGV) {
 		    /* Nothing was here before, so mark a prototype of ""  */
+#if PERL_VERSION < 10
+                    sv_upgrade(sv, SVt_PV);
+#endif
 		    sv_setpvn(sv, "", 0);
 		} else if (SvPOK(sv) && SvCUR(sv) == 0) {
 		    /* There is already a prototype of "" - do nothing  */
@@ -516,9 +537,14 @@ EXPLODE
 		}
 #ifndef SYMBIAN
 		hek = HeKEY_hek(he);
+#if PERL_VERSION < 10
+		if (!hv_store(${c_subname}_missing, HEK_KEY(hek), HEK_LEN(hek),
+			       &PL_sv_yes, HEK_HASH(hek)))
+#else
 		if (!hv_common(${c_subname}_missing, NULL, HEK_KEY(hek),
  			       HEK_LEN(hek), HEK_FLAGS(hek), HV_FETCH_ISSTORE,
 			       &PL_sv_yes, HEK_HASH(hek)))
+#endif
 		    Perl_croak(aTHX_ "Couldn't add key '%s' to missing_hash",
 			  value_for_notfound->name);
 #endif
@@ -595,10 +621,6 @@ EOBOOT
     return if !defined $xs_subname;
 
     if ($croak_on_error || $autoload) {
-        my $newSVpvtemp = $] >= 5010001
-          ? "newSVpvn_flags(SvPVX(cv), SvCUR(cv), SVs_TEMP | SvUTF8(cv))"
-          # no UTF-8 subnames < 5.10.1
-          : "sv_2mortal(newSVpvn(SvPVX(cv), SvCUR(cv)))";
         print $xs_fh $croak_on_error ? <<"EOC" : <<"EOA";
 
 void
@@ -616,7 +638,11 @@ void
 AUTOLOAD()
     PROTOTYPE: DISABLE
     PREINIT:
-	SV *sv = $newSVpvtemp;
+#if PERL_VERSION < 10
+        SV *sv = sv_2mortal(newSVpvn(SvPVX(cv), SvCUR(cv)));
+#else
+        SV *sv = newSVpvn_flags(SvPVX(cv), SvCUR(cv), SVs_TEMP | SvUTF8(cv));
+#endif
 	const COP *cop = PL_curcop;
 EOA
         print $xs_fh <<"EOC";
