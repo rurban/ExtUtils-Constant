@@ -297,11 +297,7 @@ EOADD
 	print $c_fh <<'EO_PCS';
     } else {
 	SvUPGRADE(sv, SVt_RV);
-#if PERL_VERSION < 10
-	SvRV(sv) = value;
-#else
 	SvRV_set(sv, value);
-#endif
 	SvROK_on(sv);
 	SvREADONLY_on(value);
     }
@@ -374,11 +370,7 @@ get_missing_hash(pTHX) {
 
     new_hv = newHV();
     SvUPGRADE(*ref, SVt_RV);
-#if PERL_VERSION < 10
-    SvRV(*ref) = (SV *)new_hv;
-#else
     SvRV_set(*ref, (SV *)new_hv);
-#endif
     SvROK_on(*ref);
     return new_hv;
 }

@@ -1,6 +1,6 @@
 package ExtUtils::Constant;
 use vars qw (@ISA $VERSION @EXPORT_OK %EXPORT_TAGS);
-$VERSION = '0.23_03';
+$VERSION = '0.23_04';
 $VERSION = eval $VERSION;
 
 =head1 NAME
@@ -464,7 +464,7 @@ autoload >= 5.10.
 Warning: Code generated via ProxySubs will only work for Perl versions
 >= 5.10, and thus should not be used for CPAN modules.
 ExtUtils::Constant::ProxySubs version older than 0.23_04 even creates
-usable only >=5.14
+code usable only >=5.14.
 
 =item C_FH
 
