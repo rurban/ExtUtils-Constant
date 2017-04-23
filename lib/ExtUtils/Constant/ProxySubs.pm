@@ -243,9 +243,15 @@ sub WriteConstants {
     my $cast_CONSTSUB = $] < 5.010 ? '(char *)' : '';
 
     print $c_fh $self->header();
+    print $c_fh <<'EOC';
+
+/* 5.6 */
+#ifndef C_ARRAY_LENGTH
+#define C_ARRAY_LENGTH(x) (sizeof(x)/sizeof((x)[0]))
+#endif
+EOC
     if ($explosives) {
         print $c_fh <<'EOC';
-
 /* 5.8 */
 #ifndef PERL_UNUSED_ARG
 #define PERL_UNUSED_ARG(x)
@@ -431,7 +437,7 @@ EOC
 	# BOOT block
 	my $struct_fh = $type ? $xs_fh : $c_fh;
 
-	print $c_fh "struct $struct_type $struct;\n";
+	print $c_fh "struct $struct_type $struct; /* $type */\n";
 
 	print $struct_fh <<"EOBOOT";
 
@@ -456,17 +462,24 @@ EOBOOT
 	    } else {
 		print $struct_fh $ifdef;
 	    }
-	    print $struct_fh "        { ", join (', ', "\"$name\"", $namelen,
-						 &$type_to_value($value)),
-						 " },\n",
-						 $self->macro_to_endif($macro);
+            # skip undef type ''
+            print $struct_fh "        { ";
+            if (defined &$type_to_value($value)) {
+                print $struct_fh join (', ', "\"$name\"", $namelen,
+                                       &$type_to_value($value));
+            } else {
+                print $struct_fh join (', ', "\"$name\"", $namelen);
+            }
+            print $struct_fh " },\n",
+              $self->macro_to_endif($macro);
 	}
 
     # Terminate the list with a NULL
-	print $struct_fh "        { NULL, 0", (", 0" x $number_of_args), " } };\n";
+	print $struct_fh "        { NULL, 0", (", 0" x $number_of_args),
+                         " }\n      };\n";
 
 	print $xs_fh <<"EOBOOT" if $type;
-	const struct $struct_type *$iterator{$type} = $array_name;
+    const struct $struct_type *$iterator{$type} = $array_name;
 EOBOOT
     }
 
@@ -546,14 +559,19 @@ EXPLODE
 		    /* It turns out to be incredibly hard to deal with all the
 		       corner cases of sub foo (); and reporting errors correctly,
 		       so lets cheat a bit.  Start with a constant subroutine  */
-		    CV *cv = newCONSTSUB(symbol_table,
+#if PERL_VERSION > 6
+		    CV *cv =
+#endif
+                             newCONSTSUB(symbol_table,
 					 ${cast_CONSTSUB}value_for_notfound->name,
 					 &PL_sv_yes);
+#if PERL_VERSION > 6
 		    /* and then turn it into a non constant declaration only.  */
 		    SvREFCNT_dec(CvXSUBANY(cv).any_ptr);
 		    CvCONST_off(cv);
 		    CvXSUB(cv) = NULL;
 		    CvXSUBANY(cv).any_ptr = NULL;
+#endif
 		}
 #ifndef SYMBIAN
 #if PERL_VERSION < 10

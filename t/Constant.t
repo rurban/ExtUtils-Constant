@@ -69,8 +69,12 @@ END {
   if (defined $orig_cwd and length $orig_cwd) {
     chdir $orig_cwd or die "Can't chdir back to '$orig_cwd': $!";
     use File::Path;
-    print "# $dir being removed...\n";
-    rmtree($dir) unless $keep_files;
+    if ($keep_files) {
+        print "# $dir kept...\n";
+    } else {
+        print "# $dir being removed...\n";
+        rmtree($dir);
+    }
   } else {
     # Can't get here.
     die "cwd at start was empty, but directory '$dir' was created" if $dir;
@@ -360,11 +364,6 @@ sub write_and_run_extension {
   my $c = tie *C, 'TieOut';
   my $xs = tie *XS, 'TieOut';
 
-  # warn when detecting the global module being used
-  warn $INC{'ExtUtils/Constant/ProxySubs.pm'}
-    if exists $INC{'ExtUtils/Constant/ProxySubs.pm'}
-    and $INC{'ExtUtils/Constant/ProxySubs.pm'} =~ m|^/usr|;
-
   ExtUtils::Constant::WriteConstants
     (C_FH => \*C,
      XS_FH => \*XS,
@@ -531,14 +530,14 @@ my @common_items = (
                    );
 
 my @args = ([]);
-# warn: work ongoing for 5.6 fixes
-if ($] >= 5.008001 or $keep_files) {
-    push @args, [PROXYSUBS => 1];
+push @args, [PROXYSUBS => 1];
+if ($keep_files or $] >= 5.008) {
     push @args, [PROXYSUBS => {autoload => 1}];
     push @args, [PROXYSUBS => {push => 1}];
     push @args, [PROXYSUBS => {croak_on_error => 1}];
     push @args, [PROXYSUBS => {croak_on_read => 1}] if $] >= 5.024;
 }
+
 foreach my $args (@args)
 {
   # Simple tests
