@@ -377,8 +377,14 @@ sub write_and_run_extension {
   # WriteConstants. (Fix this to give finer grained control if needed)
   my $expect;
   $expect = $C_code . "\n#### XS Section:\n" . $XS_code unless $wc_args;
+  my $p_args = "";
+  if ($wc_args) {
+    for (@$wc_args) {
+      $p_args .= " ".(ref $_ eq 'HASH' ? join(" ", keys %$_) : $_);
+    }
+  };
 
-  print "# $name\n# $dir/$subdir being created...\n";
+  print "# $name\n# $dir/$subdir being created for $p_args ...\n";
   mkdir $subdir, 0777 or die "mkdir: $!\n";
   chdir $subdir or die $!;
 
@@ -516,8 +522,12 @@ my @common_items = (
                    );
 
 my @args = ([]);
+# warn: work ongoing for <5.10 fixes
 push @args, [PROXYSUBS => 1]; # if $] > 5.009002;
-push @args, [PROXYSUBS => {autoload => 1} ];
+push @args, [PROXYSUBS => {autoload => 1}]       if $] >= 5.010;
+push @args, [PROXYSUBS => {push => 1} ]          if $] >= 5.010;
+push @args, [PROXYSUBS => {croak_on_read => 1}]  if $] >= 5.014;
+push @args, [PROXYSUBS => {croak_on_error => 1}] if $] >= 5.014;
 foreach my $args (@args)
 {
   # Simple tests
@@ -621,14 +631,21 @@ $test++;
 
 EOT
 
-  my $cond;
+  my ($cond, $croak_pre, $croak_post);
   if ($] >= 5.006 || $Config{longsize} < 8) {
     $cond = '$not_zero > 0 && $not_zero == ~0';
   } else {
     $cond = q{pack 'Q', $not_zero eq ~pack 'Q', 0};
   }
+  if ($args and ref $args->[1] and $args->[1]->{croak_on_read}) {
+    $croak_pre = '^Your vendor has not defined ExtTest macro ';
+    $croak_post = '';
+  } else {
+    $croak_pre = '^';
+    $croak_post = ' is not a valid ExtTest macro';
+  }
 
-  $test_body .= sprintf <<'EOT', $cond;
+  $test_body .= sprintf <<'EOT', $cond, $croak_pre, $croak_post;
 # UV
 my $not_zero = NOT_ZERO;
 if (%s) {
@@ -637,10 +654,6 @@ if (%s) {
   print "not ok $test # \$not_zero=$not_zero ~0=" . (~0) . "\n";
 }
 $test++;
-
-EOT
-
-  $test_body .= <<'EOT';
 
 # Value includes a "*/" in an attempt to bust out of a C comment.
 # Also tests custom cpp #if clauses
@@ -676,7 +689,7 @@ $test++;
 my $notthere = eval { &ExtTest::NOTTHERE; };
 if (defined $notthere) {
   print "not ok $test # \$notthere='$notthere'\n";
-} elsif ($@ !~ /NOTTHERE is not a valid ExtTest macro/) {
+} elsif ($@ !~ /%sNOTTHERE%s/) {
   chomp $@;
   print "not ok $test # \$@='$@'\n";
 } else {
@@ -711,36 +724,41 @@ unless (defined $undef) {
 }
 $test++;
 
+EOT
+
+  $test_body .= sprintf <<'EOT', $croak_pre, $croak_post;
 # invalid macro (chosen to look like a mix up between No and SW)
 $notdef = eval { &ExtTest::So };
 if (defined $notdef) {
   print "not ok $test # \$notdef='$notdef'\n";
-} elsif ($@ !~ /^So is not a valid ExtTest macro/) {
+} elsif ($@ !~ /%sSo%s/) {
   print "not ok $test # \$@='$@'\n";
 } else {
   print "ok $test\n";
 }
 $test++;
 
+EOT
+
+  $test_body .= sprintf <<'EOT', $croak_pre, $croak_post;
 # invalid defined macro
 $notdef = eval { &ExtTest::EW };
 if (defined $notdef) {
   print "not ok $test # \$notdef='$notdef'\n";
-} elsif ($@ !~ /^EW is not a valid ExtTest macro/) {
+} elsif ($@ !~ /^%sEW%s/) {
   print "not ok $test # \$@='$@'\n";
 } else {
   print "ok $test\n";
 }
 $test++;
 
-my %compass = (
 EOT
 
-while (my ($point, $bearing) = each %compass) {
-  $test_body .= "'$point' => $bearing, "
-}
-
-$test_body .= <<'EOT';
+  $test_body .= "my %compass = (\n";
+  while (my ($point, $bearing) = each %compass) {
+    $test_body .= "'$point' => $bearing, "
+  }
+  $test_body .= <<'EOT';
 
 );
 
@@ -767,7 +785,7 @@ $test++;
 
 EOT
 
-$test_body .= <<"EOT";
+  $test_body .= <<"EOT";
 my \$rfc1149 = RFC1149;
 if (\$rfc1149 ne "$parent_rfc1149") {
   print "not ok \$test # '\$rfc1149' ne '$parent_rfc1149'\n";
@@ -785,7 +803,7 @@ if (\$rfc1149 != 1149) {
 
 EOT
 
-$test_body .= <<'EOT';
+  $test_body .= <<'EOT';
 # test macro=>1
 my $open = OPEN;
 if ($open eq '/*') {
@@ -794,9 +812,10 @@ if ($open eq '/*') {
   print "not ok $test # \$open='$open'\n";
 }
 $test++;
-EOT
-$dummytest+=18;
 
+EOT
+
+  $dummytest+=18;
   end_tests("Simple tests", \@items, \@export_names, $header, $test_body,
 	    $args);
 }

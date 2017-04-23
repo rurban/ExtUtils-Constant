@@ -456,7 +456,15 @@ as detailed in L<"C_constant">.
 =item PROXYSUBS
 
 If true, uses proxy subs. See L<ExtUtils::Constant::ProxySubs>.
-Code generated via ProxySubs will only work for Perl versions >= 5.14.
+Options: push, croak_on_read, croak_on_error, autoload, with the last
+three options being exclusive.
+push can only be used with >= 5.10, croak_on_error and croak_on_read >= 5.14,
+autoload >= 5.10.
+
+Warning: Code generated via ProxySubs will only work for Perl versions
+>= 5.10, and thus should not be used for CPAN modules.
+ExtUtils::Constant::ProxySubs version older than 0.23_04 even creates
+usable only >=5.14
 
 =item C_FH
 

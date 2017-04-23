@@ -91,5 +91,7 @@ history can be found via http://perl5.git.perl.org/perl.git/tree/HEAD:/lib ]
         Fixed podchecker violations.
         Tested with cperl
 
-0.23_04 Sat Apr 22 18:52:28 2017 rurban
-        Fix ProxySubs to generate code also valid for <5.14
+0.23_04 2017-04-23 rurban
+        Fix ProxySubs to generate code also valid for 5.10 - 5.14.
+        Add testcases for the 4 ProxySubs options.
+        Warn against its usage on creation.

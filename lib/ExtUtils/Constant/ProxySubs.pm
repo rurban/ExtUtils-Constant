@@ -207,7 +207,16 @@ sub WriteConstants {
 	if $push && !$can_do_pcs;
     # Until someone patches this (with test cases)
     carp ("PROXYSUBS options 'push' and 'croak_on_read' cannot be used together")
-	if $explosives && $push;
+        if $explosives && $push;
+
+    # Warn against geenral usage
+    if ($croak_on_error or $explosives) {
+      warn("Code created by PROXYSUBS croak_on_error or croak_on_read\n"
+           ."can only be used with perl >= 5.14. It is NOT recommended for CPAN modules!\n");
+    } else {
+      warn("Code created by PROXYSUBS can only be used with perl >= 5.10.\n"
+           ."It is NOT recommended for CPAN modules!\n");
+    }
 
     # If anyone is insane enough to suggest a package name containing %
     my $package_sprintf_safe = $package;
