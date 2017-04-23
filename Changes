@@ -98,3 +98,6 @@ history can be found via http://perl5.git.perl.org/perl.git/tree/HEAD:/lib ]
 
 0.23_05 2017-04-23 rurban
         Fix the tests under CORE
+
+0.23_06 2017-04-24 rurban
+        Fixed PROXYSUBS push and croak_on_error for 5.8

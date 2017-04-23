@@ -91,8 +91,10 @@ C<undef>.  The value of the macro is not needed.
 
 =cut
 
-if ($] >= 5.006) {
-  eval "use warnings; 1" or die $@;
+BEGIN {
+    if ($] >= 5.006) {
+        eval "use warnings; 1" or die $@;
+    }
 }
 use strict;
 use Carp qw(croak cluck);
@@ -261,6 +263,8 @@ EOT
   # If anyone is insane enough to suggest a package name containing %
   my $package_sprintf_safe = $package;
   $package_sprintf_safe =~ s/%/%%/g;
+  # People were actually more insane than thought
+  $package_sprintf_safe =~ s/\x{0}/\\0/g if $] > 5.015006;
 
   $xs .= << "EOT";
       /* Return 1 or 2 items. First is error message, or undef if no error.
@@ -536,7 +540,7 @@ sub WriteConstants {
 	  require FileHandle;
 	  $c_fh = FileHandle->new();
       }
-      open $c_fh, ">$ARGS{C_FILE}" or die "Can't open $ARGS{C_FILE}: $!";
+      open $c_fh, ">", $ARGS{C_FILE} or die "Can't open $ARGS{C_FILE}: $!";
   }
 
   my $xs_fh = $ARGS{XS_FH};
@@ -545,7 +549,7 @@ sub WriteConstants {
 	  require FileHandle;
 	  $xs_fh = FileHandle->new();
       }
-      open $xs_fh, ">$ARGS{XS_FILE}" or die "Can't open $ARGS{XS_FILE}: $!";
+      open $xs_fh, ">", $ARGS{XS_FILE} or die "Can't open $ARGS{XS_FILE}: $!";
   }
 
   # As this subroutine is intended to make code that isn't edited, there's no

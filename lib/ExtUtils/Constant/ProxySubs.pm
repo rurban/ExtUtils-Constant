@@ -201,34 +201,24 @@ sub WriteConstants {
 	carp ("PROXYSUBS options 'autoload', 'croak_on_read' and 'croak_on_error' cannot be used together")
 	    if $exclusive > 1;
     }
-    # Strictly it requires Perl_caller_cx
-    #carp ("PROXYSUBS option 'croak_on_error' requires v5.13.5 or later")
-    #	if $croak_on_error && $^V < v5.13.5;
     # Strictly this is actually 5.8.9, but it's not well tested there
     my $can_do_pcs = $] >= 5.009;
-    # Until someone patches this (with test cases)
-    #carp ("PROXYSUBS option 'push' requires v5.10 or later")
-    #	if $push && !$can_do_pcs;
     # Until someone patches this (with test cases)
     carp ("PROXYSUBS options 'push' and 'croak_on_read' cannot be used together")
         if $explosives && $push;
 
-    # Warn against general usage.
-    # PROXYSUBS or PROXYSUBS autoload can not yet be used with 5.6
+    # Warn against general usage:
+    # PROXYSUBS with any option or none can not yet be used with 5.6
     if ($explosives) {
       warn("Code created by PROXYSUBS croak_on_read can only be used with perl >= 5.24.\n"
            ."It is NOT recommended for CPAN modules!\n");
-    }# elsif ($croak_on_error) {
-    #  warn("Code created by PROXYSUBS croak_on_error can only be used with perl >= 5.14.\n"
-    #       ."It is NOT recommended for CPAN modules!\n");
-    #} elsif ($push) {
-    #  warn("Code created by PROXYSUBS push can only be used with perl >= 5.10.\n"
-    #       ."It is NOT recommended for CPAN modules!\n");
-    #}
+    }
 
     # If anyone is insane enough to suggest a package name containing %
     my $package_sprintf_safe = $package;
     $package_sprintf_safe =~ s/%/%%/g;
+    # People were actually more insane than thought
+    $package_sprintf_safe =~ s/\x{0}/\\0/g if $] > 5.015006;
 
     # All the types we see
     my $what = {};
