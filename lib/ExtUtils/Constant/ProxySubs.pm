@@ -276,7 +276,7 @@ EO_NOPCS
     } else {
 	print $c_fh <<"EO_PCS";
 #if PERL_VERSION < 10
-    HE *he = (HE*) hv_fetch(hash, name, namelen, TRUE);
+    SV **he = hv_fetch(hash, name, namelen, TRUE);
 #else
     HE *he = (HE*) hv_common_key_len(hash, name, namelen, HV_FETCH_LVALUE, NULL,
 				     0);
@@ -287,7 +287,11 @@ EO_NOPCS
         Perl_croak(aTHX_ "Couldn't add key '%s' to %%$package_sprintf_safe\::",
 	      name);
     }
+#if PERL_VERSION < 10
+    sv = *he;
+#else
     sv = HeVAL(he);
+#endif
     if (SvOK(sv) || SvTYPE(sv) == SVt_PVGV) {
 	/* Someone has been here before us - have to make a real sub.  */
 EO_PCS
@@ -495,27 +499,31 @@ EOBOOT
 				    value_for_notfound->namelen, tripwire);
 EXPLODE
 
+		SV *sv;
+#ifndef SYMBIAN
+		HEK *hek;
+#endif
 		/* Need to add prototypes, else parsing will vary by platform.  */
 #if PERL_VERSION < 10
-		HE *he = (HE*) hv_fetch(symbol_table,
-                                        value_for_notfound->name,
-                                        value_for_notfound->namelen,
-                                        TRUE);
+		SV **he = hv_fetch(symbol_table,
+                                   value_for_notfound->name,
+                                   value_for_notfound->namelen,
+                                   TRUE);
 #else
 		HE *he = (HE*) hv_common_key_len(symbol_table,
 						 value_for_notfound->name,
 						 value_for_notfound->namelen,
 						 HV_FETCH_LVALUE, NULL, 0);
 #endif
-		SV *sv;
-#ifndef SYMBIAN
-		HEK *hek;
-#endif
 		if (!he) {
 		    Perl_croak(aTHX_ "Couldn't add key '%s' to %%$package_sprintf_safe\::",
 			  value_for_notfound->name);
 		}
+#if PERL_VERSION < 10
+		sv = *he;
+#else
 		sv = HeVAL(he);
+#endif
 		if (!SvOK(sv) && SvTYPE(sv) != SVt_PVGV) {
 		    /* Nothing was here before, so mark a prototype of ""  */
 #if PERL_VERSION < 10
@@ -540,11 +548,13 @@ EXPLODE
 		    CvXSUBANY(cv).any_ptr = NULL;
 		}
 #ifndef SYMBIAN
-		hek = HeKEY_hek(he);
 #if PERL_VERSION < 10
-		if (!hv_store(${c_subname}_missing, HEK_KEY(hek), HEK_LEN(hek),
-			       &PL_sv_yes, HEK_HASH(hek)))
+		if (!hv_store(${c_subname}_missing, 
+                    value_for_notfound->name,
+                    value_for_notfound->namelen,
+                    &PL_sv_yes, 0))
 #else
+		hek = HeKEY_hek(he);
 		if (!hv_common(${c_subname}_missing, NULL, HEK_KEY(hek),
  			       HEK_LEN(hek), HEK_FLAGS(hek), HV_FETCH_ISSTORE,
 			       &PL_sv_yes, HEK_HASH(hek)))
