@@ -459,13 +459,14 @@ If true, uses proxy subs. See L<ExtUtils::Constant::ProxySubs>.
 Options: autoload, push, croak_on_error or croak_on_read with the
 options being exclusive.
 
+Warning: Code generated via ProxySubs with any of the options push,
+croak_on_error or croak_on_read will only work for newer Perl versions
+and thus should not be used for CPAN modules.
 push can only be used with >= 5.10,
-autoload >= 5.10,
 croak_on_error >= 5.14,
 croak_on_read >= 5.24,
+ProxySubs or with autoload >= 5.8.
 
-Warning: Code generated via ProxySubs will only work for Perl versions
->= 5.10, and thus should not be used for CPAN modules.
 ExtUtils::Constant::ProxySubs versions older than 0.23_04 even creates
 code usable only >=5.14.
 

@@ -209,15 +209,16 @@ sub WriteConstants {
     carp ("PROXYSUBS options 'push' and 'croak_on_read' cannot be used together")
         if $explosives && $push;
 
-    # Warn against general usage
+    # Warn against general usage.
+    # PROXYSUBS or PROXYSUBS autoload can not yet be used with 5.6
     if ($explosives) {
       warn("Code created by PROXYSUBS croak_on_read can only be used with perl >= 5.24.\n"
            ."It is NOT recommended for CPAN modules!\n");
     } elsif ($croak_on_error) {
       warn("Code created by PROXYSUBS croak_on_error can only be used with perl >= 5.14.\n"
            ."It is NOT recommended for CPAN modules!\n");
-    } else {
-      warn("Code created by PROXYSUBS can only be used with perl >= 5.10.\n"
+    } elsif ($push) {
+      warn("Code created by PROXYSUBS push can only be used with perl >= 5.10.\n"
            ."It is NOT recommended for CPAN modules!\n");
     }
 
@@ -271,6 +272,7 @@ ${c_subname}_add_symbol($pthx HV *hash, const char *name, I32 namelen, SV *value
 EOADD
     if (!$can_do_pcs) {
 	print $c_fh <<'EO_NOPCS';
+    HE *he = NULL;
     if (namelen) {
 EO_NOPCS
     } else {
