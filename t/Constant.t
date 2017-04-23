@@ -78,7 +78,11 @@ END {
 }
 
 chdir $dir or die $!;
-push @INC, '../../lib', '../../../lib';
+if ($ENV{PERL_CORE}) {
+  unshift @INC, '../../lib', '../../../lib';
+} else { 
+  unshift @INC, '../blib/lib';
+}
 
 package TieOut;
 
@@ -109,6 +113,7 @@ sub check_for_bonus_files {
   my %expect = map {($^O eq 'VMS' ? lc($_) : $_), 1} @_;
 
   my $fail;
+  print "# Missing MANIFEST with --keep-files\n" if @_ <= 2;
   opendir DIR, $dir or die "opendir '$dir': $!";
   while (defined (my $entry = readdir DIR)) {
     $entry =~ s/(.*?)\.?$/\L$1/ if $^O eq 'VMS';
@@ -132,7 +137,7 @@ sub build_and_run {
   sleep 1; # [RT #78188]
   my @perlout = `$perl -Mblib Makefile.PL $core`;
   if ($?) {
-    print "not ok $realtest # $perl Makefile.PL failed: $?\n";
+    print "not ok $realtest # $perl -Mblib Makefile.PL failed: $?\n";
     print "# $_" foreach @perlout;
     exit($?);
   } else {
@@ -141,7 +146,7 @@ sub build_and_run {
   $realtest++;
 
   if (-f "$makefile$makefile_ext") {
-    print "ok $realtest - \n";
+    print "ok $realtest\n";
   } else {
     print "not ok $realtest - $makefile$makefile_ext does not exist\n";
   }
@@ -246,7 +251,7 @@ sub build_and_run {
       unlink 'regentmp';
     }
     else {
-      $regen = `$perl -x $package.xs`;
+      $regen = `$perl -Mblib -x $package.xs`;
     }
     if ($?) {
       print "not ok $realtest # $perl -x $package.xs failed: $?\n";
@@ -306,9 +311,8 @@ sub build_and_run {
     foreach (@$files) {
       unlink $_ or warn "unlink $_: $!";
     }
+    check_for_bonus_files ('.', '.', '..');
   }
-
-  check_for_bonus_files ('.', '.', '..');
 }
 
 sub Makefile_PL {
@@ -320,7 +324,6 @@ sub Makefile_PL {
   open FH, ">$makefilePL" or die "open >$makefilePL: $!\n";
   print FH <<"EOT";
 #!$perl -w
-use blib;
 use ExtUtils::MakeMaker;
 WriteMakefile(
               'NAME'		=> "$package",
@@ -357,12 +360,18 @@ sub write_and_run_extension {
   my $c = tie *C, 'TieOut';
   my $xs = tie *XS, 'TieOut';
 
-  ExtUtils::Constant::WriteConstants(C_FH => \*C,
-				     XS_FH => \*XS,
-				     NAME => $package,
-				     NAMES => $items,
-				     @$wc_args,
-				     );
+  # warn when detecting the global module being used
+  warn $INC{'ExtUtils/Constant/ProxySubs.pm'}
+    if exists $INC{'ExtUtils/Constant/ProxySubs.pm'}
+    and $INC{'ExtUtils/Constant/ProxySubs.pm'} =~ m|^/usr|;
+
+  ExtUtils::Constant::WriteConstants
+    (C_FH => \*C,
+     XS_FH => \*XS,
+     NAME => $package,
+     NAMES => $items,
+     @$wc_args,
+    );
 
   my $C_code = $c->read();
   my $XS_code = $xs->read();
