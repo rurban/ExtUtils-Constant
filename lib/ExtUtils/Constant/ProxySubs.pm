@@ -209,10 +209,13 @@ sub WriteConstants {
     carp ("PROXYSUBS options 'push' and 'croak_on_read' cannot be used together")
         if $explosives && $push;
 
-    # Warn against geenral usage
-    if ($croak_on_error or $explosives) {
-      warn("Code created by PROXYSUBS croak_on_error or croak_on_read\n"
-           ."can only be used with perl >= 5.14. It is NOT recommended for CPAN modules!\n");
+    # Warn against general usage
+    if ($explosives) {
+      warn("Code created by PROXYSUBS croak_on_read can only be used with perl >= 5.24.\n"
+           ."It is NOT recommended for CPAN modules!\n");
+    } elsif ($croak_on_error) {
+      warn("Code created by PROXYSUBS croak_on_error can only be used with perl >= 5.14.\n"
+           ."It is NOT recommended for CPAN modules!\n");
     } else {
       warn("Code created by PROXYSUBS can only be used with perl >= 5.10.\n"
            ."It is NOT recommended for CPAN modules!\n");
