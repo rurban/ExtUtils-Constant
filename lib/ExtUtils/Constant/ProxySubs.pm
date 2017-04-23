@@ -137,16 +137,20 @@ sub boottime_iterator {
 	return sprintf <<"EOBOOT", &$generator(&$extractor($iterator));
         while ($iterator->name) {
 	    he = $subname($athx $hash, $iterator->name,
-				     $iterator->namelen, %s);
+                          $iterator->namelen, %s);
+#if PERL_VERSION < 10
+	    av_push(push, (SV*)he);
+#else
 	    av_push(push, newSVhek(HeKEY_hek(he)));
+#endif
             ++$iterator;
 	}
 EOBOOT
     } else {
 	return sprintf <<"EOBOOT", &$generator(&$extractor($iterator));
         while ($iterator->name) {
-	    $subname($athx $hash, $iterator->name,
-				$iterator->namelen, %s);
+	    (void)$subname($athx $hash, $iterator->name,
+                           $iterator->namelen, %s);
             ++$iterator;
 	}
 EOBOOT
@@ -198,13 +202,13 @@ sub WriteConstants {
 	    if $exclusive > 1;
     }
     # Strictly it requires Perl_caller_cx
-    carp ("PROXYSUBS option 'croak_on_error' requires v5.13.5 or later")
-	if $croak_on_error && $^V < v5.13.5;
+    #carp ("PROXYSUBS option 'croak_on_error' requires v5.13.5 or later")
+    #	if $croak_on_error && $^V < v5.13.5;
     # Strictly this is actually 5.8.9, but it's not well tested there
     my $can_do_pcs = $] >= 5.009;
     # Until someone patches this (with test cases)
-    carp ("PROXYSUBS option 'push' requires v5.10 or later")
-	if $push && !$can_do_pcs;
+    #carp ("PROXYSUBS option 'push' requires v5.10 or later")
+    #	if $push && !$can_do_pcs;
     # Until someone patches this (with test cases)
     carp ("PROXYSUBS options 'push' and 'croak_on_read' cannot be used together")
         if $explosives && $push;
@@ -214,13 +218,13 @@ sub WriteConstants {
     if ($explosives) {
       warn("Code created by PROXYSUBS croak_on_read can only be used with perl >= 5.24.\n"
            ."It is NOT recommended for CPAN modules!\n");
-    } elsif ($croak_on_error) {
-      warn("Code created by PROXYSUBS croak_on_error can only be used with perl >= 5.14.\n"
-           ."It is NOT recommended for CPAN modules!\n");
-    } elsif ($push) {
-      warn("Code created by PROXYSUBS push can only be used with perl >= 5.10.\n"
-           ."It is NOT recommended for CPAN modules!\n");
-    }
+    }# elsif ($croak_on_error) {
+    #  warn("Code created by PROXYSUBS croak_on_error can only be used with perl >= 5.14.\n"
+    #       ."It is NOT recommended for CPAN modules!\n");
+    #} elsif ($push) {
+    #  warn("Code created by PROXYSUBS push can only be used with perl >= 5.10.\n"
+    #       ."It is NOT recommended for CPAN modules!\n");
+    #}
 
     # If anyone is insane enough to suggest a package name containing %
     my $package_sprintf_safe = $package;
@@ -249,6 +253,18 @@ sub WriteConstants {
     my $cast_CONSTSUB = $] < 5.010 ? '(char *)' : '';
 
     print $c_fh $self->header();
+    if ($explosives) {
+        print $c_fh <<'EOC';
+
+/* 5.8 */
+#ifndef PERL_UNUSED_ARG
+#define PERL_UNUSED_ARG(x)
+#endif
+#ifndef NORETURN_FUNCTION_END
+#define NORETURN_FUNCTION_END
+#endif
+EOC
+    }
     if ($autoload || $croak_on_error) {
 	print $c_fh <<'EOC';
 
@@ -316,7 +332,7 @@ EO_PCS
     }
 EO_NOPCS
     }
-    print $c_fh "    return he;\n" if $push;
+    print $c_fh "    return (HE *)he;\n" if $push;
     print $c_fh <<'EOADD';
 }
 
@@ -566,9 +582,15 @@ EXPLODE
 #endif
 DONT
 
-    print $xs_fh "		av_push(push, newSVhek(hek));\n"
-	if $push;
-
+    if ($push) {
+        print $xs_fh <<'EOC';
+#if PERL_VERSION < 10
+	    av_push(push, sv);
+#else
+	    av_push(push, newSVhek(hek));
+#endif
+EOC
+    }
     print $xs_fh <<"EOBOOT";
 	    } while ((++value_for_notfound)->name);
 	}
@@ -644,10 +666,14 @@ $xs_subname(sv)
     INPUT:
 	SV *		sv;
     PREINIT:
+#ifdef caller_cx
 	const PERL_CONTEXT *cx = caller_cx(0, NULL);
 	/* cx is NULL if we've been called from the top level. PL_curcop isn't
 	   ideal, but it's much cheaper than other ways of not going SEGV.  */
 	const COP *cop = cx ? cx->blk_oldcop : PL_curcop;
+#else
+	const COP *cop = PL_curcop;
+#endif
 EOC
 
 void

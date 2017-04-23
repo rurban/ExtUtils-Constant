@@ -531,12 +531,14 @@ my @common_items = (
                    );
 
 my @args = ([]);
-push @args, [PROXYSUBS => 1]                     if $] >= 5.008001 or $keep_files;
-push @args, [PROXYSUBS => {autoload => 1}]       if $] >= 5.008001 or $keep_files;
-# warn: work ongoing for <5.10 fixes
-push @args, [PROXYSUBS => {push => 1} ]          if $] >= 5.010 or $keep_files;
-push @args, [PROXYSUBS => {croak_on_error => 1}] if $] >= 5.014 or $keep_files;
-push @args, [PROXYSUBS => {croak_on_read => 1}]  if $] >= 5.024 or $keep_files;
+# warn: work ongoing for 5.6 fixes
+if ($] >= 5.008001 or $keep_files) {
+    push @args, [PROXYSUBS => 1];
+    push @args, [PROXYSUBS => {autoload => 1}];
+    push @args, [PROXYSUBS => {push => 1}];
+    push @args, [PROXYSUBS => {croak_on_error => 1}];
+    push @args, [PROXYSUBS => {croak_on_read => 1}] if $] >= 5.024;
+}
 foreach my $args (@args)
 {
   # Simple tests
