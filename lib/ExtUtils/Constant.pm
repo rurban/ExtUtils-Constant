@@ -25,6 +25,9 @@ It is principally used by the C<h2xs> utility, on which this code is based.
 It doesn't contain the routines to scan header files to extract these
 constants.
 
+Memory footprint and run-time performance is not as good as
+specialized perfect hashes as with L<XSConfig> or L<Win32::GUI::Constants>.
+
 =head1 USAGE
 
 Generally one only needs to call the C<WriteConstants> function, and then
@@ -465,6 +468,9 @@ as detailed in L<"C_constant">.
 =item C<PROXYSUBS>
 
 If true, uses proxy subs. See L<ExtUtils::Constant::ProxySubs>.
+PROXYSUBS create CONSTSUB's for each defined constant upfront, while
+without PROXYSUBS every constant is looked up at run-time. Thus it
+trades memory footprint for faster run-time performance.
 
 Options: autoload, push, croak_on_error or croak_on_read with the
 options being exclusive.
