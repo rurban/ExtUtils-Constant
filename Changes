@@ -104,3 +104,8 @@ history can be found via http://perl5.git.perl.org/perl.git/tree/HEAD:/lib ]
         Fixed PROXYSUBS with all options but croak_on_read.
         Only one 5.6 PROXYSUBS autoload limitation in the error message
         on undefined macros.
+
+0.23_07 2017-04-24 rurban
+        Add benchmarking code and results. Recommended is PROXYSUBS or
+        PROXYSUBS autoload.
+        Silence cperl-only Used once warnings with PROXYSUBS push
