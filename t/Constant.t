@@ -362,6 +362,10 @@ sub write_and_run_extension {
 
   my $c = tie *C, 'TieOut';
   my $xs = tie *XS, 'TieOut';
+  my %options;
+  if ($wc_args and ref $wc_args->[1]) {
+      $options{$_} = 1 for keys %{$wc_args->[1]};
+  }
 
   ExtUtils::Constant::WriteConstants
     (C_FH => \*C,
@@ -454,7 +458,7 @@ EOT
   print FH "\t$_\n" foreach (@$export_names);
   print FH ");\n";
   # Print the AUTOLOAD subroutine ExtUtils::Constant generated for us
-  print FH autoload ($package, $]);
+  print FH autoload ($package, $]) unless $options{autoload};
   print FH "bootstrap $package \$VERSION;\n1;\n__END__\n";
   close FH or die "close $pm: $!\n";
 
@@ -541,6 +545,11 @@ foreach my $args (@args)
 {
   # Simple tests
   start_tests();
+  my %options;
+  if ($args and ref $args->[1]) {
+      $options{$_} = 1 for keys %{$args->[1]};
+  }
+
   my $parent_rfc1149 =
     'A Standard for the Transmission of IP Datagrams on Avian Carriers';
   # Test the code that generates 1 and 2 letter name comparisons.
