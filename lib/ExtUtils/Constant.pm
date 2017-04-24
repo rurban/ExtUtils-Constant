@@ -326,7 +326,7 @@ It defaults to the version of perl running the subroutine.  If I<AUTOLOADER>
 is true, the AUTOLOAD subroutine falls back on AutoLoader::AUTOLOAD for all
 names that the constant() routine doesn't recognise.
 
-This is needed unless you use C<[PROXYSUBS => {autoload=>1]]>, which generates
+This is needed unless you use C<PROXYSUBS => {autoload=>1}>, but which generates
 code unusable earlier than 5.8.
 
 =cut
@@ -444,25 +444,25 @@ The attributes supported are
 
 =over 4
 
-=item NAME
+=item C<NAME>
 
 Name of the module.  This must be specified
 
-=item DEFAULT_TYPE
+=item C<DEFAULT_TYPE>
 
 The default type for the constants.  If not specified C<IV> is assumed.
 
-=item BREAKOUT_AT
+=item C<BREAKOUT_AT>
 
 The names of the constants are grouped by length.  Generate child subroutines
 for each group with this number or more names in.
 
-=item NAMES
+=item C<NAMES>
 
 An array of constants' names, either scalars containing names, or hashrefs
 as detailed in L<"C_constant">.
 
-=item PROXYSUBS
+=item C<PROXYSUBS>
 
 If true, uses proxy subs. See L<ExtUtils::Constant::ProxySubs>.
 
@@ -478,12 +478,12 @@ croak_on_read 5.24.
 ExtUtils::Constant::ProxySubs versions older than 0.23_04 even creates
 code usable only >=5.14.
 
-=item C_FH
+=item C<C_FH>
 
 A filehandle to write the C code to.  If not given, then I<C_FILE> is opened
 for writing.
 
-=item C_FILE
+=item C<C_FILE>
 
 The name of the file to write containing the C code.  The default is
 C<const-c.inc>.  The C<-> in the name ensures that the file can't be
@@ -491,22 +491,22 @@ mistaken for anything related to a legitimate perl package name, and
 not naming the file C<.c> avoids having to override Makefile.PL's
 C<.xs> to C<.c> rules.
 
-=item XS_FH
+=item C<XS_FH>
 
 A filehandle to write the XS code to.  If not given, then I<XS_FILE> is opened
 for writing.
 
-=item XS_FILE
+=item C<XS_FILE>
 
 The name of the file to write containing the XS code.  The default is
 C<const-xs.inc>.
 
-=item XS_SUBNAME
+=item C<XS_SUBNAME>
 
 The perl visible name of the XS subroutine generated which will return the
 constants. The default is C<constant>.
 
-=item C_SUBNAME
+=item C<C_SUBNAME>
 
 The name of the C subroutine generated which will return the constants.
 The default is I<XS_SUBNAME>.  Child subroutines have C<_> and the name
@@ -572,14 +572,16 @@ sub WriteConstants {
 
       # indent is still undef. Until anyone implements indent style rules with
       # it.
-      foreach (ExtUtils::Constant::XS->C_constant({package => $ARGS{NAME},
-						   subname => $ARGS{C_SUBNAME},
-						   default_type =>
-						       $ARGS{DEFAULT_TYPE},
-						       types => $types,
-						       breakout =>
-						       $ARGS{BREAKOUT_AT}},
-						  @{$ARGS{NAMES}})) {
+      foreach (ExtUtils::Constant::XS->C_constant
+               ({package => $ARGS{NAME},
+                 subname => $ARGS{C_SUBNAME},
+                 default_type =>
+                   $ARGS{DEFAULT_TYPE},
+                 types => $types,
+                 breakout =>
+                   $ARGS{BREAKOUT_AT}},
+                @{$ARGS{NAMES}}))
+      {
 	  print $c_fh $_, "\n"; # C constant subs
       }
       print $xs_fh XS_constant ($ARGS{NAME}, $types, $ARGS{XS_SUBNAME},
@@ -597,7 +599,8 @@ __END__
 
 =head1 AUTHOR
 
-Nicholas Clark <nick@ccl4.org> based on the code in C<h2xs> by Larry Wall and
-others
+Reini Urban <rurban@cpan.org> fixed up ProxySubs and took over maintainance.
+Nicholas Clark <nick@ccl4.org> wrote it based on the code in C<h2xs>
+by Larry Wall and others.
 
 =cut
