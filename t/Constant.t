@@ -574,7 +574,7 @@ push @args, [PROXYSUBS => 1];
 push @args, [PROXYSUBS => {autoload => 1}];
 push @args, [PROXYSUBS => {push => 'CONSTANTS'}];
 push @args, [PROXYSUBS => {croak_on_error => 1}];
-push @args, [PROXYSUBS => {croak_on_read => 1}] if $] >= 5.024;
+push @args, [PROXYSUBS => {croak_on_read => 1}] if $] >= 5.024 or $keep_files;
 push @args, [PROXYSUBS => {autoload => 1, push => 'CONSTANTS'}];
 push @args, [PROXYSUBS => {croak_on_error => 1, push => 'CONSTANTS'}];
 

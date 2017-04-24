@@ -109,3 +109,8 @@ history can be found via http://perl5.git.perl.org/perl.git/tree/HEAD:/lib ]
         Add benchmarking code and results. Recommended is PROXYSUBS or
         PROXYSUBS autoload.
         Silence cperl-only Used once warnings with PROXYSUBS push
+
+0.23_08 2017-04-25 rurban
+	Minor C code improvements for croak_on_read, tested with -Wall -Wextra:
+        Correct MGVTBL for all versions, get_missing_hash not needed.
+ 
