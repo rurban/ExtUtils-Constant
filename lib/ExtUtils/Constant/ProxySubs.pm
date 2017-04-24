@@ -9,7 +9,7 @@ require ExtUtils::Constant::XS;
 use ExtUtils::Constant::Utils qw(C_stringify);
 use ExtUtils::Constant::XS qw(%XS_TypeSet);
 
-$VERSION = '0.23_05';
+$VERSION = '0.23_06';
 @ISA = 'ExtUtils::Constant::XS';
 
 %type_to_struct =
@@ -208,10 +208,14 @@ sub WriteConstants {
         if $explosives && $push;
 
     # Warn against general usage:
-    # PROXYSUBS with any option or none can not yet be used with 5.6
+    # PROXYSUBS with any option can not yet be used with 5.6
     if ($explosives) {
-      warn("Code created by PROXYSUBS croak_on_read can only be used with perl >= 5.24.\n"
-           ."It is NOT recommended for CPAN modules!\n");
+        warn("Code created by PROXYSUBS croak_on_read can only be used with perl >= 5.24.\n",
+             "It is NOT recommended for CPAN modules!\n");
+    } elsif (%$options) {
+        warn("Code created by PROXYSUBS with ",join(" ",keys %$options),
+             " can only be used with perl >= 5.8.\n",
+             "It is NOT recommended for CPAN modules\n");
     }
 
     # If anyone is insane enough to suggest a package name containing %

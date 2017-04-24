@@ -2,9 +2,22 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'         => 'ExtUtils::Constant',
     'VERSION_FROM' => 'lib/ExtUtils/Constant.pm', # finds $VERSION
+    'AUTHOR'       => 'Reini Urban <rurban@cpan.org>',
+    'ABSTRACT'     => 'generate XS code to import C header constants',
     # Added to the core somewhere around 5.7.2.
-    INSTALLDIRS    => ($] >= 5.007002 && $] <= 5.012) ? 'perl' : 'site',
-    PREREQ_PM      => { 'IPC::Cmd' => 0 }, # for can_run, in core since 5.9.5
+    'INSTALLDIRS'  => ($] >= 5.007002 && $] <= 5.012) ? 'perl' : 'site',
+    'PREREQ_PM'    => { 'IPC::Cmd' => 0 }, # for can_run, in core since 5.9.5
+    'LICENSE'   => 'perl_5',
+    ($ExtUtils::MakeMaker::VERSION gt '6.46' ?
+    ('META_MERGE' => {
+         resources => {
+             repository => 'https://github.com/rurban/ExtUtils-Constant/',
+             bugtracker => 'https://github.com/rurban/ExtUtils-Constant/issues/',
+             license    => 'http://dev.perl.org/licenses/',
+         },
+     }) : ()),
+    clean => { FILES => "ext-[0-9]*" },
+    SIGN => 1,
 );
 
 if ($] > 5.005_50 && $] < 5.006001) {

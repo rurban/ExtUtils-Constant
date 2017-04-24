@@ -117,7 +117,6 @@ sub check_for_bonus_files {
   my %expect = map {($^O eq 'VMS' ? lc($_) : $_), 1} @_;
 
   my $fail;
-  print "# Missing MANIFEST with --keep-files\n" if @_ <= 2;
   opendir DIR, $dir or die "opendir '$dir': $!";
   while (defined (my $entry = readdir DIR)) {
     $entry =~ s/(.*?)\.?$/\L$1/ if $^O eq 'VMS';

@@ -1,6 +1,6 @@
 package ExtUtils::Constant;
 use vars qw (@ISA $VERSION @EXPORT_OK %EXPORT_TAGS);
-$VERSION = '0.23_05';
+$VERSION = '0.23_06';
 $VERSION = eval $VERSION;
 
 =head1 NAME
@@ -326,6 +326,9 @@ It defaults to the version of perl running the subroutine.  If I<AUTOLOADER>
 is true, the AUTOLOAD subroutine falls back on AutoLoader::AUTOLOAD for all
 names that the constant() routine doesn't recognise.
 
+This is needed unless you use C<[PROXYSUBS => {autoload=>1]]>, which generates
+code unusable earlier than 5.8.
+
 =cut
 
 # ' # Grr. syntax highlighters that don't grok pod.
@@ -408,24 +411,26 @@ sub WriteMakefileSnippet {
   my $indent = $args{INDENT} || 2;
 
   my $result = <<"EOT";
-ExtUtils::Constant::WriteConstants(
-                                   NAME         => '$args{NAME}',
-                                   NAMES        => \\\@names,
-                                   DEFAULT_TYPE => '$args{DEFAULT_TYPE}',
+ExtUtils::Constant::WriteConstants
+    (
+      NAME         => '$args{NAME}',
+      NAMES        => \\\@names,
+      DEFAULT_TYPE => '$args{DEFAULT_TYPE}',
 EOT
   foreach (qw (C_FILE XS_FILE)) {
     next unless exists $args{$_};
-    $result .= sprintf "                                   %-12s => '%s',\n",
-      $_, $args{$_};
+    $result .= sprintf "      %-12s => '%s',\n",
+                 $_, $args{$_};
   }
   $result .= <<'EOT';
-                                );
+    );
 EOT
 
   $result =~ s/^/' 'x$indent/gem;
-  return ExtUtils::Constant::XS->dump_names({default_type=>$args{DEFAULT_TYPE},
-					     indent=>$indent,},
-					    @{$args{NAMES}})
+  return ExtUtils::Constant::XS->dump_names
+    ({default_type=>$args{DEFAULT_TYPE},
+      indent=>$indent,},
+     @{$args{NAMES}})
     . $result;
 }
 
@@ -460,16 +465,15 @@ as detailed in L<"C_constant">.
 =item PROXYSUBS
 
 If true, uses proxy subs. See L<ExtUtils::Constant::ProxySubs>.
+
 Options: autoload, push, croak_on_error or croak_on_read with the
 options being exclusive.
 
 Warning: Code generated via ProxySubs with any of the options push,
 croak_on_error or croak_on_read will only work for newer Perl versions
 and thus should not be used for CPAN modules.
-push can only be used with >= 5.10,
-croak_on_error >= 5.14,
-croak_on_read >= 5.24,
-ProxySubs or with autoload >= 5.8.
+autoload, push or croak_on_error can only be used with perl 5.8 or newer,
+croak_on_read 5.24.
 
 ExtUtils::Constant::ProxySubs versions older than 0.23_04 even creates
 code usable only >=5.14.
