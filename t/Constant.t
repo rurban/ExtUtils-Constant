@@ -530,14 +530,12 @@ my @common_items = (
 
 my @args = ([]);
 push @args, [PROXYSUBS => 1];
-if ($keep_files or $] >= 5.008) {
-    push @args, [PROXYSUBS => {autoload => 1}];
-    push @args, [PROXYSUBS => {push => 'CONSTANTS'}];
-    push @args, [PROXYSUBS => {croak_on_error => 1}];
-    push @args, [PROXYSUBS => {croak_on_read => 1}] if $] >= 5.024;
-    push @args, [PROXYSUBS => {autoload => 1, push => 'CONSTANTS'}];
-    push @args, [PROXYSUBS => {croak_on_error => 1, push => 'CONSTANTS'}];
-}
+push @args, [PROXYSUBS => {autoload => 1}];
+push @args, [PROXYSUBS => {push => 'CONSTANTS'}];
+push @args, [PROXYSUBS => {croak_on_error => 1}];
+push @args, [PROXYSUBS => {croak_on_read => 1}] if $] >= 5.024;
+push @args, [PROXYSUBS => {autoload => 1, push => 'CONSTANTS'}];
+push @args, [PROXYSUBS => {croak_on_error => 1, push => 'CONSTANTS'}];
 
 foreach my $args (@args)
 {
@@ -648,7 +646,12 @@ EOT
   } else {
     $cond = q{pack 'Q', $not_zero eq ~pack 'Q', 0};
   }
-  if ($args and ref $args->[1] and $args->[1]->{croak_on_read}) {
+  my $croak_NOTDEF = '^Your vendor has not defined ExtTest macro ';
+  if ($] < 5.008 and $args and ref $args->[1] and $args->[1]->{autoload}) {
+    $croak_pre = '^Undefined subroutine \&ExtTest::';
+    $croak_post = ' called at';
+    $croak_NOTDEF = '^Undefined subroutine \&ExtTest::';
+  } elsif ($args and ref $args->[1] and $args->[1]->{croak_on_read}) {
     $croak_pre = '^Your vendor has not defined ExtTest macro ';
     $croak_post = '';
   } else {
@@ -656,7 +659,7 @@ EOT
     $croak_post = ' is not a valid ExtTest macro';
   }
 
-  $test_body .= sprintf <<'EOT', $cond, $croak_pre, $croak_post;
+  $test_body .= sprintf <<'EOT', $cond, $croak_NOTDEF, $croak_pre, $croak_post;
 # UV
 my $not_zero = NOT_ZERO;
 if (%s) {
@@ -689,7 +692,7 @@ $test++;
 my $notdef = eval { NOTDEF; };
 if (defined $notdef) {
   print "not ok $test # \$notdef='$notdef'\n";
-} elsif ($@ !~ /Your vendor has not defined ExtTest macro NOTDEF/) {
+} elsif ($@ !~ /%sNOTDEF/) {
   print "not ok $test # \$@='$@'\n";
 } else {
   print "ok $test\n";

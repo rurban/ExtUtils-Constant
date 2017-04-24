@@ -472,17 +472,8 @@ PROXYSUBS create CONSTSUB's for each defined constant upfront, while
 without PROXYSUBS every constant is looked up at run-time. Thus it
 trades memory footprint for faster run-time performance.
 
-Options: autoload, push, croak_on_error or croak_on_read with the
-options being exclusive.
-
-Warning: Code generated via ProxySubs with any of the options push,
-croak_on_error or croak_on_read will only work for newer Perl versions
-and thus should not be used for CPAN modules.
-autoload, push or croak_on_error can only be used with perl 5.8 or newer,
-croak_on_read 5.24.
-
-ExtUtils::Constant::ProxySubs versions older than 0.23_04 even creates
-code usable only >=5.14.
+Options: autoload, push, croak_on_error or croak_on_read with most of
+the options being exclusive, and croak_on_read usable since 5.24.
 
 =item C<C_FH>
 
