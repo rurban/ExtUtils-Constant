@@ -546,11 +546,21 @@ EXPLODE
 		sv = HeVAL(he);
 #endif
 		if (!SvOK(sv) && SvTYPE(sv) != SVt_PVGV) {
-		    /* Nothing was here before, so mark a prototype of ""  */
-#if PERL_VERSION < 10
+#if 0
+                    CV *cv;
+		    /* 5.6 needs a proper const sub? */
+                    newCONSTSUB(symbol_table, (char *)value_for_notfound->name,
+                                &PL_sv_undef);
+                    cv = GvCV(sv);
+#elif PERL_VERSION < 8
+                    /* empty typeglob as NULL sv? */
+#elif PERL_VERSION < 10
                     sv_upgrade(sv, SVt_PV);
-#endif
 		    sv_setpvn(sv, "", 0);
+#else
+		    /* Nothing was here before, so mark a prototype of ""  */
+		    sv_setpvn(sv, "", 0);
+#endif
 		} else if (SvPOK(sv) && SvCUR(sv) == 0) {
 		    /* There is already a prototype of "" - do nothing  */
 		} else {
@@ -559,19 +569,23 @@ EXPLODE
 		    /* It turns out to be incredibly hard to deal with all the
 		       corner cases of sub foo (); and reporting errors correctly,
 		       so lets cheat a bit.  Start with a constant subroutine  */
+                    CV *cv;
 #if PERL_VERSION > 6
-		    CV *cv =
+                    cv =
 #endif
-                             newCONSTSUB(symbol_table,
-					 ${cast_CONSTSUB}value_for_notfound->name,
-					 &PL_sv_yes);
-#if PERL_VERSION > 6
+                        newCONSTSUB(symbol_table,
+                                     (char *)value_for_notfound->name,
+                                     &PL_sv_yes);
+#if PERL_VERSION < 8
+                    cv = GvCV(sv);
+#endif
 		    /* and then turn it into a non constant declaration only.  */
+#if PERL_VERSION > 6
 		    SvREFCNT_dec(CvXSUBANY(cv).any_ptr);
 		    CvCONST_off(cv);
+#endif
 		    CvXSUB(cv) = NULL;
 		    CvXSUBANY(cv).any_ptr = NULL;
-#endif
 		}
 #ifndef SYMBIAN
 #if PERL_VERSION < 10
