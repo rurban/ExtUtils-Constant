@@ -532,9 +532,11 @@ my @args = ([]);
 push @args, [PROXYSUBS => 1];
 if ($keep_files or $] >= 5.008) {
     push @args, [PROXYSUBS => {autoload => 1}];
-    push @args, [PROXYSUBS => {push => 1}];
+    push @args, [PROXYSUBS => {push => 'CONSTANTS'}];
     push @args, [PROXYSUBS => {croak_on_error => 1}];
     push @args, [PROXYSUBS => {croak_on_read => 1}] if $] >= 5.024;
+    push @args, [PROXYSUBS => {autoload => 1, push => 'CONSTANTS'}];
+    push @args, [PROXYSUBS => {croak_on_error => 1, push => 'CONSTANTS'}];
 }
 
 foreach my $args (@args)
