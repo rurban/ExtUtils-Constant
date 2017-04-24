@@ -503,8 +503,13 @@ BOOT:
     HV *symbol_table = get_hv("$symbol_table", GV_ADD);
 EOBOOT
     if ($push) {
+        # silence cperl-only Used once warnings
 	print $xs_fh <<"EOC";
+#ifndef USE_CPERL
     AV *push = get_av(\"$push\", GV_ADD);
+#else
+    AV *push = get_av(\"$push\", GV_ADD|GV_ADDMULTI);
+#endif
     HE *he;
 EOC
     }
